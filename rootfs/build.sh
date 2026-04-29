@@ -76,6 +76,7 @@ trap cleanup EXIT
 chroot "$ROOTFS_DIR" /bin/bash -eux <<CHROOT
 pacman-key --init
 pacman-key --populate archlinuxarm
+pacman -Rns --noconfirm linux-aarch64 linux-firmware || true
 pacman -Syu --noconfirm
 pacman -S --needed --noconfirm $PACKAGES
 ln -sf /usr/share/zoneinfo/UTC /etc/localtime
@@ -95,6 +96,7 @@ CHROOT
 mkdir -p "$ROOTFS_DIR/usr/lib/modules"
 cp -a /kernel_modules/lib/modules/. "$ROOTFS_DIR/usr/lib/modules/"
 chroot "$ROOTFS_DIR" depmod "$KERNEL_RELEASE"
+rm -rf "$ROOTFS_DIR/var/cache/pacman/pkg/"*
 
 cp -a /overlay/. "$ROOTFS_DIR/"
 chmod 0755 "$ROOTFS_DIR/usr/local/lib/avf/make-ttyd-cert"
