@@ -27,7 +27,7 @@ echo "==> Building rootfs helper image"
 docker build -t arch-avf-rootfs "$SCRIPT_DIR"
 
 echo "==> Creating Arch Linux ARM rootfs"
-docker run --rm --privileged \
+docker run --rm -i --privileged \
     -v "$BUILD_DIR:/build" \
     -v "$SCRIPT_DIR/packages.txt:/packages.txt:ro" \
     -v "$KERNEL_MODULES_DIR:/kernel_modules:ro" \

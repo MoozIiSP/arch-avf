@@ -19,7 +19,7 @@ echo "==> Building kernel helper image"
 docker build -t arch-avf-kernel "$SCRIPT_DIR"
 
 echo "==> Cross-compiling Linux $KERNEL_VERSION for arm64"
-docker run --rm \
+docker run --rm -i \
     -v "$BUILD_DIR:/output" \
     -v "$CONFIG_FRAGMENT:/config/kernel_fragment:ro" \
     -e KERNEL_VERSION="$KERNEL_VERSION" \
