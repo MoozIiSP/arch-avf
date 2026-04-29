@@ -1,0 +1,13 @@
+[Unit]
+Description=Android Terminal app private storage
+After=network-online.target
+Wants=network-online.target
+
+[Mount]
+What=internal
+Where=/mnt/internal
+Type=virtiofs
+Options=rw,nofail
+
+[Install]
+WantedBy=multi-user.target

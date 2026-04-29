@@ -1,0 +1,16 @@
+[Unit]
+Description=Android Terminal web console
+After=network-online.target mnt-internal.mount
+Wants=network-online.target mnt-internal.mount
+ConditionPathExists=/usr/bin/ttyd
+
+[Service]
+ExecStartPre=/usr/local/lib/avf/make-ttyd-cert
+ExecStart=/usr/bin/ttyd --ssl --ssl-cert /etc/ttyd/server.crt --ssl-key /etc/ttyd/server.key --ssl-ca /mnt/internal/ca.crt -t disableLeaveAlert=true -W /usr/bin/login -f @DROID_USER@
+Restart=always
+RestartSec=1
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

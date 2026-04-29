@@ -1,0 +1,63 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            adb \
+            dosfstools \
+            e2fsprogs \
+            fdisk \
+            qemu-user-static \
+            systemd-container
+
+      - name: Build kernel
+        run: make kernel
+
+      - name: Build rootfs
+        run: make rootfs
+
+      - name: Build payload
+        run: make image check
+
+      - name: Package payload
+        run: |
+          cp build/images.tar.gz archlinux-avf-aarch64-images.tar.gz
+          sha256sum archlinux-avf-aarch64-images.tar.gz > archlinux-avf-aarch64-images.tar.gz.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: archlinux-avf-aarch64
+          path: |
+            archlinux-avf-aarch64-images.tar.gz
+            archlinux-avf-aarch64-images.tar.gz.sha256
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            archlinux-avf-aarch64-images.tar.gz
+            archlinux-avf-aarch64-images.tar.gz.sha256
+          body: |
+            Arch Linux ARM image for Android 16 AVF Terminal app.
+
+            Push the image as `/sdcard/linux/images.tar.gz`, then restart Terminal to auto-install.

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+install -d -m 0700 /etc/ttyd
+
+if [ -s /etc/ttyd/server.crt ] && [ -s /etc/ttyd/server.key ]; then
+    exit 0
+fi
+
+openssl req \
+    -x509 \
+    -newkey rsa:2048 \
+    -nodes \
+    -days 3650 \
+    -subj "/CN=arch-avf-terminal" \
+    -keyout /etc/ttyd/server.key \
+    -out /etc/ttyd/server.crt
+
+chmod 0600 /etc/ttyd/server.key
+chmod 0644 /etc/ttyd/server.crt

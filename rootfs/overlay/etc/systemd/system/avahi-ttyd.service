@@ -1,0 +1,15 @@
+[Unit]
+Description=Advertise Android Terminal web console
+After=ttyd.service avahi-daemon.service
+Wants=ttyd.service avahi-daemon.service
+ConditionPathExists=/usr/bin/avahi-publish-service
+
+[Service]
+ExecStart=/usr/bin/avahi-publish-service ttyd _http._tcp 7681
+Restart=always
+RestartSec=1
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,5 @@
+.DS_Store
+build/
+*.log
+*.img
+*.tar.gz

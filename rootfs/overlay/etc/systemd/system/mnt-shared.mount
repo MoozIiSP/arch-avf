@@ -1,0 +1,13 @@
+[Unit]
+Description=Android shared storage
+After=network-online.target
+Wants=network-online.target
+
+[Mount]
+What=android
+Where=/mnt/shared
+Type=virtiofs
+Options=rw,nofail
+
+[Install]
+WantedBy=multi-user.target

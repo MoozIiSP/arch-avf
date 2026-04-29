@@ -1,0 +1,15 @@
+[Unit]
+Description=Android AVF shutdown runner
+After=network-online.target mnt-internal.mount
+Wants=network-online.target mnt-internal.mount
+ConditionPathExists=/usr/lib/avf/shutdown_runner
+
+[Service]
+ExecStart=/usr/lib/avf/shutdown_runner --grpc-port-file /mnt/internal/debian_service_port
+Restart=on-failure
+RestartSec=1
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
