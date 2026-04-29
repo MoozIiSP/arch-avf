@@ -35,7 +35,10 @@ jobs:
         run: make rootfs
 
       - name: Build payload
-        run: make image check
+        run: |
+          bash image/create-disk.sh
+          bash image/assemble.sh
+          make check
 
       - name: Package payload
         run: |
