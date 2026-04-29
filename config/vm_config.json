@@ -1,13 +1,13 @@
 {
     "name": "debian",
     "disks": [{"partitions": [
-        {"label": "ESP", "path": "$PAYLOAD_DIR/efi_part", "writable": true, "guid": "{efi_part_guid}"},
-        {"label": "archlinux", "path": "$PAYLOAD_DIR/root_part", "writable": true, "guid": "{root_part_guid}"}
+        {"label": "archlinux", "path": "$PAYLOAD_DIR/root_part", "writable": true, "guid": "{root_part_guid}"},
+        {"label": "ESP", "path": "$PAYLOAD_DIR/efi_part", "writable": true, "guid": "{efi_part_guid}"}
     ], "writable": true}],
     "sharedPath": [{"sharedPath": "/storage/emulated"}, {"sharedPath": "$APP_DATA_DIR/files"}],
     "kernel": "$PAYLOAD_DIR/vmlinuz",
     "initrd": "$PAYLOAD_DIR/initrd.img",
-    "params": "root=/dev/vda2 rw rootwait console=ttyS0,115200n8 console=tty1 systemd.unified_cgroup_hierarchy=1",
+    "params": "root=/dev/vda1 rw rootwait console=ttyS0,115200n8 console=tty1 systemd.unified_cgroup_hierarchy=1",
     "protected": false,
     "memory_mib": 4096,
     "cpu_topology": "match_host",

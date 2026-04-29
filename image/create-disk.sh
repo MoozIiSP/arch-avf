@@ -45,14 +45,14 @@ TOTAL_SIZE_MB=$((EFI_SIZE_MB + ROOT_SIZE_MB + 16))
 echo "==> Creating ${TOTAL_SIZE_MB} MiB raw GPT disk image"
 truncate -s "${TOTAL_SIZE_MB}M" "$DISK_IMG"
 SECTORS_PER_MIB=2048
-EFI_START=$((1 * SECTORS_PER_MIB))
-EFI_SECTORS=$((EFI_SIZE_MB * SECTORS_PER_MIB))
-ROOT_START=$(((EFI_SIZE_MB + 1) * SECTORS_PER_MIB))
+ROOT_START=$((1 * SECTORS_PER_MIB))
 ROOT_SECTORS=$((ROOT_SIZE_MB * SECTORS_PER_MIB))
+EFI_START=$(((ROOT_SIZE_MB + 1) * SECTORS_PER_MIB))
+EFI_SECTORS=$((EFI_SIZE_MB * SECTORS_PER_MIB))
 sfdisk "$DISK_IMG" <<EOF
 label: gpt
-start=${EFI_START}, size=${EFI_SECTORS}, type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B, name="ESP"
 start=${ROOT_START}, size=${ROOT_SECTORS}, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name="archlinux"
+start=${EFI_START}, size=${EFI_SECTORS}, type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B, name="ESP"
 EOF
 
 LOOP_DEV=""
@@ -70,11 +70,8 @@ trap cleanup EXIT
 
 echo "==> Attaching loop device"
 LOOP_DEV="$(sudo losetup --find --partscan --show "$DISK_IMG")"
-EFI_DEV="${LOOP_DEV}p1"
-ROOT_DEV="${LOOP_DEV}p2"
-if [ ! -b "$EFI_DEV" ]; then
-    EFI_DEV="${LOOP_DEV}p1"
-fi
+ROOT_DEV="${LOOP_DEV}p1"
+EFI_DEV="${LOOP_DEV}p2"
 
 echo "==> Formatting partitions"
 sudo mkfs.vfat -F 32 -n ESP "$EFI_DEV"
@@ -124,8 +121,8 @@ for partition in data["partitions"]:
 done
 
 cat > "$BUILD_DIR/partition-uuids.env" <<EOF
-EFI_PART_GUID="$(sfdisk --part-uuid "$DISK_IMG" 1)"
-ROOT_PART_GUID="$(sfdisk --part-uuid "$DISK_IMG" 2)"
+ROOT_PART_GUID="$(sfdisk --part-uuid "$DISK_IMG" 1)"
+EFI_PART_GUID="$(sfdisk --part-uuid "$DISK_IMG" 2)"
 EOF
 
 ls -lh "$DISK_IMG" "$EFI_PART" "$ROOT_PART" "$BUILD_DIR/partition-uuids.env"
