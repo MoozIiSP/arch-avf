@@ -80,7 +80,7 @@ printf 'root:%s\n' "$ROOT_PASSWORD" | chpasswd
 id -u "$DROID_USER" >/dev/null 2>&1 || useradd -m -s /bin/bash "$DROID_USER"
 printf '%s:%s\n' "$DROID_USER" "$DROID_PASSWORD" | chpasswd
 for group in wheel video render seat; do
-    getent group "$group" >/dev/null && usermod -aG "$group" "$DROID_USER"
+    getent group "\$group" >/dev/null && usermod -aG "\$group" "$DROID_USER"
 done
 ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
