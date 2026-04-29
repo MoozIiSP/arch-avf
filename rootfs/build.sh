@@ -58,6 +58,8 @@ bsdtar -xpf "$TARBALL" -C "$ROOTFS_DIR"
 
 rm -f "$ROOTFS_DIR/etc/resolv.conf"
 install -Dm644 /etc/resolv.conf "$ROOTFS_DIR/etc/resolv.conf"
+# Docker chroots can confuse pacman's mount lookup for /var/cache/pacman/pkg.
+sed -i 's/^[[:space:]]*CheckSpace/#CheckSpace/' "$ROOTFS_DIR/etc/pacman.conf"
 cp /usr/bin/qemu-aarch64-static "$ROOTFS_DIR/usr/bin/"
 mountpoint -q "$ROOTFS_DIR/proc" || mount -t proc proc "$ROOTFS_DIR/proc"
 mountpoint -q "$ROOTFS_DIR/sys" || mount --rbind /sys "$ROOTFS_DIR/sys"
