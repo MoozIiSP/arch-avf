@@ -8,7 +8,7 @@ PAYLOAD_DIR := $(BUILD_DIR)/payload
 
 all: kernel rootfs image check
 
-rootfs: kernel
+rootfs:
 	@bash "$(PROJECT_DIR)/rootfs/build.sh"
 
 kernel:

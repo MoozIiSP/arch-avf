@@ -1,14 +1,12 @@
-FROM archlinux:latest
+FROM debian:bookworm-slim
 
-RUN pacman -Syu --noconfirm \
-        arch-install-scripts \
-        bsdtar \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
         curl \
-        dosfstools \
-        e2fsprogs \
+        libarchive-tools \
         qemu-user-static \
-        qemu-user-static-binfmt \
         sudo \
-    && pacman -Scc --noconfirm
+        util-linux \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /work

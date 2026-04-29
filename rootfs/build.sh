@@ -69,7 +69,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-arch-chroot "$ROOTFS_DIR" /bin/bash -eux <<CHROOT
+chroot "$ROOTFS_DIR" /bin/bash -eux <<CHROOT
 pacman-key --init
 pacman-key --populate archlinuxarm
 pacman -Syu --noconfirm
@@ -90,7 +90,7 @@ CHROOT
 
 mkdir -p "$ROOTFS_DIR/usr/lib/modules"
 cp -a /kernel_modules/lib/modules/. "$ROOTFS_DIR/usr/lib/modules/"
-arch-chroot "$ROOTFS_DIR" depmod "$KERNEL_RELEASE"
+chroot "$ROOTFS_DIR" depmod "$KERNEL_RELEASE"
 
 cp -a /overlay/. "$ROOTFS_DIR/"
 chmod 0755 "$ROOTFS_DIR/usr/local/lib/avf/make-ttyd-cert"
@@ -140,7 +140,7 @@ FILES=()
 HOOKS=(base udev modconf block filesystems keyboard fsck)
 EOF
 
-arch-chroot "$ROOTFS_DIR" /bin/bash -eux <<CHROOT
+chroot "$ROOTFS_DIR" /bin/bash -eux <<CHROOT
 systemctl enable \
     sshd.service \
     NetworkManager.service \
