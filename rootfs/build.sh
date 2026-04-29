@@ -164,9 +164,10 @@ mkinitcpio -k "$KERNEL_RELEASE" -g /boot/initrd.img
 CHROOT
 cp "$ROOTFS_DIR/boot/initrd.img" /build/initrd.img
 rm -f "$ROOTFS_DIR/usr/bin/qemu-aarch64-static"
+tar --numeric-owner -czf /build/rootfs.tar.gz -C "$ROOTFS_DIR" .
 SCRIPT
 
-echo "==> Packing rootfs"
-tar --numeric-owner -czf "$OUTPUT" -C "$ROOTFS_DIR" .
+echo "==> Rootfs archive"
+[ -f "$OUTPUT" ] || { echo "Missing rootfs archive: $OUTPUT" >&2; exit 1; }
 cp "$INITRD_OUT" "$PROJECT_DIR/build/initrd.img"
 ls -lh "$OUTPUT" "$PROJECT_DIR/build/initrd.img"
