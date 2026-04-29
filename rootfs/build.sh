@@ -166,9 +166,11 @@ mkinitcpio -k "$KERNEL_RELEASE" -g /boot/initrd.img
 CHROOT
 cp "$ROOTFS_DIR/boot/initrd.img" /build/initrd.img
 rm -f "$ROOTFS_DIR/usr/bin/qemu-aarch64-static"
+rm -f "$ROOTFS_DIR/etc/pacman.d/gnupg/S.gpg-agent"*
 cleanup
 trap - EXIT
 tar --numeric-owner -czf /build/rootfs.tar.gz -C "$ROOTFS_DIR" .
+chmod 0644 /build/initrd.img /build/rootfs.tar.gz
 SCRIPT
 
 echo "==> Rootfs archive"
