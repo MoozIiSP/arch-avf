@@ -56,7 +56,8 @@ fi
 
 bsdtar -xpf "$TARBALL" -C "$ROOTFS_DIR"
 
-cp /etc/resolv.conf "$ROOTFS_DIR/etc/resolv.conf"
+rm -f "$ROOTFS_DIR/etc/resolv.conf"
+install -Dm644 /etc/resolv.conf "$ROOTFS_DIR/etc/resolv.conf"
 cp /usr/bin/qemu-aarch64-static "$ROOTFS_DIR/usr/bin/"
 mountpoint -q "$ROOTFS_DIR/proc" || mount -t proc proc "$ROOTFS_DIR/proc"
 mountpoint -q "$ROOTFS_DIR/sys" || mount --rbind /sys "$ROOTFS_DIR/sys"
