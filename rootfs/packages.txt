@@ -8,7 +8,6 @@ openssh
 sudo
 openssl
 vim
-neofetch
 archlinuxarm-keyring
 ca-certificates
 dhcpcd
