@@ -48,6 +48,8 @@ jobs:
         run: |
           cp build/images.tar.gz archlinux-avf-aarch64-images.tar.gz
           sha256sum archlinux-avf-aarch64-images.tar.gz > archlinux-avf-aarch64-images.tar.gz.sha256
+          cp build/arch-avf-replace.tar.gz archlinux-avf-aarch64-replace.tar.gz
+          sha256sum archlinux-avf-aarch64-replace.tar.gz > archlinux-avf-aarch64-replace.tar.gz.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -56,6 +58,8 @@ jobs:
           path: |
             archlinux-avf-aarch64-images.tar.gz
             archlinux-avf-aarch64-images.tar.gz.sha256
+            archlinux-avf-aarch64-replace.tar.gz
+            archlinux-avf-aarch64-replace.tar.gz.sha256
 
       - name: Create GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -64,7 +68,11 @@ jobs:
           files: |
             archlinux-avf-aarch64-images.tar.gz
             archlinux-avf-aarch64-images.tar.gz.sha256
+            archlinux-avf-aarch64-replace.tar.gz
+            archlinux-avf-aarch64-replace.tar.gz.sha256
           body: |
             Arch Linux ARM image for Android 16 AVF Terminal app.
 
-            Push the image as `/sdcard/linux/images.tar.gz`, then restart Terminal to auto-install.
+            Debuggable/userdebug builds: push `archlinux-avf-aarch64-images.tar.gz` as `/sdcard/linux/images.tar.gz`, then restart Terminal to auto-install.
+
+            Production/user builds: install Google's Debian Terminal image first, extract `archlinux-avf-aarch64-replace.tar.gz` to `Download/image`, then run `bash /mnt/shared/image/replace.sh` inside Terminal. Terminal will reboot; reopen it and let the script finish the second stage.

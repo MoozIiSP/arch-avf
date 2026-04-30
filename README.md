@@ -23,7 +23,7 @@ vmlinuz
 initrd.img
 ```
 
-`vm_config.json` describes the VM and points AVF at the payload files through `$PAYLOAD_DIR`. `root_part` is a writable ext4 filesystem image mounted as `/dev/vda2`. `efi_part` is a vfat EFI system partition. The image includes both an EFI-stub kernel at `EFI/BOOT/BOOTAA64.EFI` and direct AVF `kernel`/`initrd` entries for compatibility while the Terminal import path evolves.
+`vm_config.json` describes the VM and points AVF at the payload files through `$PAYLOAD_DIR`. `root_part` is a writable ext4 filesystem image mounted as `/dev/vda1`. `efi_part` is a vfat EFI system partition. The image includes both an EFI-stub kernel at `EFI/BOOT/BOOTAA64.EFI` and direct AVF `kernel`/`initrd` entries for compatibility while the Terminal import path evolves.
 
 The checked-in config uses:
 
@@ -77,6 +77,8 @@ build/image/efi_part
 build/payload/
 build/images.tar.gz
 build/images.tar.gz.sha256
+build/arch-avf-replace.tar.gz
+build/arch-avf-replace.tar.gz.sha256
 ```
 
 Tunable environment variables:
@@ -90,7 +92,9 @@ TARGET_DIR=/sdcard/linux make deploy
 
 ## Deploy
 
-Enable the Android Terminal app on an Android 16+ device, connect the device with USB debugging enabled, then run:
+### Debuggable Android builds
+
+Enable the Android Terminal app on an Android 16+ debuggable/userdebug device, connect the device with USB debugging enabled, then run:
 
 ```bash
 make deploy
@@ -103,6 +107,23 @@ The image is pushed to:
 ```
 
 Restart the Terminal app. It should offer to auto-install the image.
+
+Production/user builds do not support installing custom images from `/sdcard/linux/images.tar.gz`.
+
+### Production Android builds
+
+On normal production Android builds, use the replace package:
+
+1. Install Google's Debian image from the Terminal app once.
+2. Download `archlinux-avf-aarch64-replace.tar.gz` from the GitHub release.
+3. Extract it on the phone so the files are under `Download/image/`.
+4. Open Terminal and run:
+
+```bash
+bash /mnt/shared/image/replace.sh
+```
+
+Terminal will reboot after stage 1. Reopen Terminal; the script should start automatically and perform the longer stage 2 replacement. Reopen Terminal once more after it exits.
 
 After boot, forward SSH and log in:
 

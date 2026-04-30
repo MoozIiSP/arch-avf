@@ -8,6 +8,7 @@ PAYLOAD_DIR="${PAYLOAD_DIR:-$BUILD_DIR/payload}"
 IMAGE_DIR="$BUILD_DIR/image"
 PARTITION_UUIDS="$IMAGE_DIR/partition-uuids.env"
 ANDROID_IMAGE="$BUILD_DIR/images.tar.gz"
+REPLACE_IMAGE="$BUILD_DIR/arch-avf-replace.tar.gz"
 
 rm -rf "$PAYLOAD_DIR"
 mkdir -p "$PAYLOAD_DIR"
@@ -61,6 +62,19 @@ tar -C "$PAYLOAD_DIR" -czf "$ANDROID_IMAGE" \
     initrd.img
 sha256sum "$ANDROID_IMAGE" > "$ANDROID_IMAGE.sha256"
 
+echo "==> Packaging production replace image"
+cp "$SCRIPT_DIR/replace.sh" "$PAYLOAD_DIR/replace.sh"
+chmod 0755 "$PAYLOAD_DIR/replace.sh"
+tar -C "$PAYLOAD_DIR" -czf "$REPLACE_IMAGE" \
+    build_id \
+    root_part \
+    efi_part \
+    vm_config.json \
+    vmlinuz \
+    initrd.img \
+    replace.sh
+sha256sum "$REPLACE_IMAGE" > "$REPLACE_IMAGE.sha256"
+
 echo "==> Payload contents"
 ls -lh "$PAYLOAD_DIR"
-ls -lh "$ANDROID_IMAGE" "$ANDROID_IMAGE.sha256"
+ls -lh "$ANDROID_IMAGE" "$ANDROID_IMAGE.sha256" "$REPLACE_IMAGE" "$REPLACE_IMAGE.sha256"
