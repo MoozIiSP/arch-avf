@@ -3,7 +3,7 @@ name: build
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    tags: ["v*", "archlinux-*"]
   pull_request:
   workflow_dispatch:
 
@@ -62,7 +62,7 @@ jobs:
             archlinux-avf-aarch64-replace.tar.gz.sha256
 
       - name: Create GitHub release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/archlinux-')
         uses: softprops/action-gh-release@v2
         with:
           files: |
