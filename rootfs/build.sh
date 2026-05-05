@@ -140,7 +140,7 @@ ipv6.ip6-privacy=0
 EOF
 
 cat > "$ROOTFS_DIR/etc/mkinitcpio.conf" <<'EOF'
-MODULES=(virtio_pci virtio_blk virtio_net virtio_console virtio_balloon virtiofs ext4 vfat)
+MODULES=()
 BINARIES=()
 FILES=()
 HOOKS=(base udev modconf block filesystems keyboard fsck)

@@ -74,10 +74,12 @@ while IFS= read -r line; do
 done < /config/kernel_fragment
 
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
-make -j"$(nproc)" ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image Image.gz modules
+make -j"$(nproc)" ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image Image.gz
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- kernelrelease > /output/kernel.release
 rm -rf /output/modules
-make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- INSTALL_MOD_PATH=/output/modules INSTALL_MOD_STRIP=1 modules_install
+kernel_release="$(cat /output/kernel.release)"
+install -d "/output/modules/lib/modules/$kernel_release"
+cp modules.builtin modules.builtin.modinfo modules.order "/output/modules/lib/modules/$kernel_release/"
 
 # crosvm's arm64 direct-kernel loader expects the raw Image format.
 cp arch/arm64/boot/Image /output/vmlinuz
