@@ -8,6 +8,7 @@ CONFIG_FRAGMENT="$PROJECT_DIR/config/kernel_fragment"
 
 KERNEL_VERSION="${KERNEL_VERSION:-6.12.85}"
 KERNEL_MAJOR="${KERNEL_MAJOR:-6.x}"
+KERNEL_BASE_CONFIG="${KERNEL_BASE_CONFIG:-tinyconfig}"
 KERNEL_TARBALL_URL="${KERNEL_TARBALL_URL:-https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$KERNEL_VERSION.tar.xz}"
 ANDROID_VIRT_REPO="${ANDROID_VIRT_REPO:-https://android.googlesource.com/platform/packages/modules/Virtualization}"
 ANDROID_VIRT_REV="${ANDROID_VIRT_REV:-android-16.0.0_r3}"
@@ -24,6 +25,7 @@ docker run --rm -i \
     -v "$CONFIG_FRAGMENT:/config/kernel_fragment:ro" \
     -e KERNEL_VERSION="$KERNEL_VERSION" \
     -e KERNEL_TARBALL_URL="$KERNEL_TARBALL_URL" \
+    -e KERNEL_BASE_CONFIG="$KERNEL_BASE_CONFIG" \
     -e ANDROID_VIRT_REPO="$ANDROID_VIRT_REPO" \
     -e ANDROID_VIRT_REV="$ANDROID_VIRT_REV" \
     -e APPLY_AVF_PATCHES="$APPLY_AVF_PATCHES" \
@@ -55,7 +57,7 @@ else
     echo "==> Skipping Android AVF patch set for Linux $KERNEL_VERSION"
 fi
 
-make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- "$KERNEL_BASE_CONFIG"
 
 while IFS= read -r line; do
     case "$line" in
