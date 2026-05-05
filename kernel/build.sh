@@ -81,7 +81,8 @@ make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- kernelrelease > /output/kernel.
 rm -rf /output/modules
 kernel_release="$(cat /output/kernel.release)"
 install -d "/output/modules/lib/modules/$kernel_release"
-cp modules.builtin modules.builtin.modinfo modules.order "/output/modules/lib/modules/$kernel_release/"
+cp modules.builtin modules.builtin.modinfo "/output/modules/lib/modules/$kernel_release/"
+touch "/output/modules/lib/modules/$kernel_release/modules.order"
 
 # crosvm's arm64 direct-kernel loader expects the raw Image format.
 cp arch/arm64/boot/Image /output/vmlinuz
