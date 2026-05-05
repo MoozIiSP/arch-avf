@@ -1,7 +1,7 @@
 [Unit]
 Description=Android Terminal web console
-After=network-online.target mnt-internal.mount
-Wants=network-online.target mnt-internal.mount
+After=network.target mnt-internal.mount
+Wants=network.target mnt-internal.mount
 ConditionPathExists=/usr/bin/ttyd
 
 [Service]

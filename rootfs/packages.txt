@@ -13,7 +13,6 @@ dhcpcd
 iproute2
 avahi
 ttyd
-zram-generator
 nftables
 mesa
 weston

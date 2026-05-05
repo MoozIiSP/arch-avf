@@ -1,7 +1,8 @@
 [Unit]
 Description=Android shared storage
-After=network-online.target
-Wants=network-online.target
+DefaultDependencies=no
+After=local-fs.target
+Before=multi-user.target
 
 [Mount]
 What=android

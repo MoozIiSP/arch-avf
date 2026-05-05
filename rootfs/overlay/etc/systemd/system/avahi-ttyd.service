@@ -1,7 +1,7 @@
 [Unit]
 Description=Advertise Android Terminal web console
-After=ttyd.service avahi-daemon.service
-Wants=ttyd.service avahi-daemon.service
+After=network.target ttyd.service avahi-daemon.service
+Wants=network.target ttyd.service avahi-daemon.service
 ConditionPathExists=/usr/bin/avahi-publish-service
 
 [Service]

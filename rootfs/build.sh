@@ -150,7 +150,6 @@ chroot "$ROOTFS_DIR" /bin/bash -eux <<CHROOT
 systemctl enable \
     sshd.service \
     NetworkManager.service \
-    NetworkManager-wait-online.service \
     systemd-resolved.service \
     serial-getty@ttyS0.service \
     seatd.service \
@@ -162,6 +161,7 @@ systemctl enable \
     ttyd.service \
     avahi-daemon.service \
     avahi-ttyd.service
+systemctl set-default multi-user.target
 mkinitcpio -k "$KERNEL_RELEASE" -g /boot/initrd.img
 CHROOT
 cp "$ROOTFS_DIR/boot/initrd.img" /build/initrd.img
