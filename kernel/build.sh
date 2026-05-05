@@ -76,6 +76,22 @@ while IFS= read -r line; do
 done < /config/kernel_fragment
 
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+for required_config in \
+    CONFIG_BINFMT_ELF \
+    CONFIG_BINFMT_SCRIPT \
+    CONFIG_CGROUPS \
+    CONFIG_DEVTMPFS_MOUNT \
+    CONFIG_EXT4_FS \
+    CONFIG_KEYS \
+    CONFIG_PROC_FS \
+    CONFIG_SECCOMP \
+    CONFIG_SECCOMP_FILTER \
+    CONFIG_TMPFS \
+    CONFIG_TMPFS_QUOTA \
+    CONFIG_VIRTIO_BLK
+do
+    grep -qx "$required_config=y" .config || { echo "Missing required kernel config: $required_config" >&2; exit 1; }
+done
 make -j"$(nproc)" ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image Image.gz
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- kernelrelease > /output/kernel.release
 rm -rf /output/modules
