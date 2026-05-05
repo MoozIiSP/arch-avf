@@ -52,6 +52,7 @@ jobs:
           sha256sum archlinux-avf-aarch64-replace.tar.gz > archlinux-avf-aarch64-replace.tar.gz.sha256
 
       - name: Upload debug image artifact
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: archlinux-avf-aarch64-images
@@ -60,6 +61,7 @@ jobs:
             archlinux-avf-aarch64-images.tar.gz.sha256
 
       - name: Upload production replace artifact
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: archlinux-avf-aarch64-replace
