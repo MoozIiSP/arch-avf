@@ -6,7 +6,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="${BUILD_DIR:-$PROJECT_DIR/build/kernel}"
 CONFIG_FRAGMENT="$PROJECT_DIR/config/kernel_fragment"
 
-KERNEL_VERSION="${KERNEL_VERSION:-6.1.169}"
+KERNEL_VERSION="${KERNEL_VERSION:-6.12.85}"
 KERNEL_MAJOR="${KERNEL_MAJOR:-6.x}"
 KERNEL_TARBALL_URL="${KERNEL_TARBALL_URL:-https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$KERNEL_VERSION.tar.xz}"
 ANDROID_VIRT_REPO="${ANDROID_VIRT_REPO:-https://android.googlesource.com/platform/packages/modules/Virtualization}"
