@@ -143,7 +143,7 @@ cat > "$ROOTFS_DIR/etc/mkinitcpio.conf" <<'EOF'
 MODULES=()
 BINARIES=()
 FILES=()
-HOOKS=(base udev modconf block filesystems keyboard fsck)
+HOOKS=(base udev block filesystems fsck)
 EOF
 
 chroot "$ROOTFS_DIR" /bin/bash -eux <<CHROOT
@@ -162,6 +162,7 @@ systemctl enable \
     avahi-daemon.service \
     avahi-ttyd.service
 systemctl set-default multi-user.target
+rm -f /etc/systemd/system/network-online.target.wants/NetworkManager-wait-online.service
 mkinitcpio -k "$KERNEL_RELEASE" -g /boot/initrd.img
 CHROOT
 cp "$ROOTFS_DIR/boot/initrd.img" /build/initrd.img
