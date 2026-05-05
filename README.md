@@ -23,7 +23,7 @@ vmlinuz
 initrd.img
 ```
 
-`vm_config.json` describes the VM and points AVF at the payload files through `$PAYLOAD_DIR`. `root_part` is a writable ext4 filesystem image mounted as `/dev/vda1`. `efi_part` is a vfat EFI system partition. The image includes both an EFI-stub kernel at `EFI/BOOT/BOOTAA64.EFI` and direct AVF `kernel`/`initrd` entries for compatibility while the Terminal import path evolves.
+`vm_config.json` describes the VM and points AVF at the payload files through `$PAYLOAD_DIR`. `root_part` is a writable ext4 filesystem image mounted as `/dev/vda1`. `efi_part` is a vfat EFI system partition. The image includes both an EFI-stub kernel at `EFI/BOOT/BOOTAA64.EFI` and a direct AVF `kernel` entry for compatibility while the Terminal import path evolves.
 
 The checked-in config uses:
 

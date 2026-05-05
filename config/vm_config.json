@@ -6,7 +6,6 @@
     ], "writable": true}],
     "sharedPath": [{"sharedPath": "/storage/emulated"}, {"sharedPath": "$APP_DATA_DIR/files"}],
     "kernel": "$PAYLOAD_DIR/vmlinuz",
-    "initrd": "$PAYLOAD_DIR/initrd.img",
     "params": "root=/dev/vda1 rw rootwait console=ttyS0,115200n8 console=tty1 systemd.unified_cgroup_hierarchy=1",
     "protected": false,
     "memory_mib": 4096,
