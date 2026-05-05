@@ -90,6 +90,10 @@ ROOT_PASSWORD=secret DROID_PASSWORD=secret make rootfs
 TARGET_DIR=/sdcard/linux make deploy
 ```
 
+`APPLY_AVF_PATCHES=auto` is the default. Android's `android-16.0.0_r3`
+kernel patch set is applied for Linux 6.1.x builds and skipped for the
+default Linux 6.12 LTS build, which uses upstream virtio support.
+
 ## Deploy
 
 ### Debuggable Android builds

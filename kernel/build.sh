@@ -11,7 +11,7 @@ KERNEL_MAJOR="${KERNEL_MAJOR:-6.x}"
 KERNEL_TARBALL_URL="${KERNEL_TARBALL_URL:-https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$KERNEL_VERSION.tar.xz}"
 ANDROID_VIRT_REPO="${ANDROID_VIRT_REPO:-https://android.googlesource.com/platform/packages/modules/Virtualization}"
 ANDROID_VIRT_REV="${ANDROID_VIRT_REV:-android-16.0.0_r3}"
-APPLY_AVF_PATCHES="${APPLY_AVF_PATCHES:-1}"
+APPLY_AVF_PATCHES="${APPLY_AVF_PATCHES:-auto}"
 
 mkdir -p "$BUILD_DIR"
 
@@ -35,6 +35,13 @@ curl -fL "$KERNEL_TARBALL_URL" -o linux.tar.xz
 tar -xf linux.tar.xz
 cd "linux-$KERNEL_VERSION"
 
+if [ "$APPLY_AVF_PATCHES" = "auto" ]; then
+    case "$KERNEL_VERSION" in
+        6.1.*) APPLY_AVF_PATCHES=1 ;;
+        *) APPLY_AVF_PATCHES=0 ;;
+    esac
+fi
+
 if [ "$APPLY_AVF_PATCHES" = "1" ]; then
     git clone --depth=1 --branch "$ANDROID_VIRT_REV" "$ANDROID_VIRT_REPO" /work/Virtualization
     for patch_file in \
@@ -44,6 +51,8 @@ if [ "$APPLY_AVF_PATCHES" = "1" ]; then
         [ -f "$patch_file" ] || { echo "Missing AVF kernel patch: $patch_file" >&2; exit 1; }
         patch -p1 < "$patch_file"
     done
+else
+    echo "==> Skipping Android AVF patch set for Linux $KERNEL_VERSION"
 fi
 
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
