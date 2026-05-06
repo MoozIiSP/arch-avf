@@ -26,12 +26,14 @@ deploy: image
 
 check:
 	@test -f "$(PAYLOAD_DIR)/vm_config.json"
-	@test -f "$(PAYLOAD_DIR)/vmlinuz"
-	@test -f "$(PAYLOAD_DIR)/initrd.img"
-	@test -f "$(PAYLOAD_DIR)/root_part"
-	@test -f "$(PAYLOAD_DIR)/efi_part"
-	@test -f "$(BUILD_DIR)/images.tar.gz"
+	@test -f "$(PAYLOAD_DIR)/build_id"
+	@test -s "$(PAYLOAD_DIR)/vmlinuz"
+	@test -s "$(PAYLOAD_DIR)/initrd.img"
+	@test -s "$(PAYLOAD_DIR)/root_part"
+	@test -s "$(PAYLOAD_DIR)/efi_part"
+	@test -s "$(BUILD_DIR)/images.tar.gz"
 	@python3 -m json.tool "$(PAYLOAD_DIR)/vm_config.json" >/dev/null
+	@python3 -c 'import pathlib,re,sys; build_id=pathlib.Path(sys.argv[1]).read_text().strip(); assert re.fullmatch(r"[A-Za-z0-9_]+/[A-Za-z0-9_]+/[A-Za-z0-9_.:+ -]+", build_id), f"Invalid Terminal target-id-date build_id: {build_id!r}"; print(f"Android Terminal build_id: {build_id}")' "$(PAYLOAD_DIR)/build_id"
 	@echo "Android import image is complete: $(BUILD_DIR)/images.tar.gz"
 
 clean:

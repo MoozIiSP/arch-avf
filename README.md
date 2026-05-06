@@ -25,6 +25,12 @@ initrd.img
 
 `vm_config.json` describes the VM and points AVF at the payload files through `$PAYLOAD_DIR`. `root_part` is a writable ext4 filesystem image mounted as `/dev/vda1`. `efi_part` is a vfat EFI system partition. The image includes both an EFI-stub kernel at `EFI/BOOT/BOOTAA64.EFI` and a direct AVF `kernel` entry for compatibility while the Terminal import path evolves.
 
+`build_id` must use Android Terminal's three-field target-id-date shape:
+
+```text
+archlinux/aarch64/<arch-release>-<kernel-release>-<utc-build-time>
+```
+
 The checked-in config uses:
 
 - 4096 MiB RAM with automatic memory ballooning

@@ -16,7 +16,7 @@ mkdir -p "$PAYLOAD_DIR"
 copy_required() {
     local src="$1"
     local dest="$2"
-    [ -f "$src" ] || { echo "Missing required file: $src" >&2; exit 1; }
+    [ -s "$src" ] || { echo "Missing or empty required file: $src" >&2; exit 1; }
     cp "$src" "$dest"
 }
 
@@ -48,7 +48,19 @@ kernel_release="unknown"
 if [ -f "$BUILD_DIR/kernel/kernel.release" ]; then
     kernel_release="$(cat "$BUILD_DIR/kernel/kernel.release")"
 fi
-printf 'arch_avf/aarch64/%s/%s\n' "$kernel_release" "$(date -u +%Y%m%dT%H%M%SZ)" > "$PAYLOAD_DIR/build_id"
+arch_release="${ARCH_RELEASE:-$(date -u +%Y.%m.%d)}"
+timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+printf 'archlinux/aarch64/%s-%s-%s\n' "$arch_release" "$kernel_release" "$timestamp" > "$PAYLOAD_DIR/build_id"
+
+python3 - "$PAYLOAD_DIR/build_id" <<'PY'
+import pathlib
+import re
+import sys
+
+build_id = pathlib.Path(sys.argv[1]).read_text().strip()
+if not re.fullmatch(r"[A-Za-z0-9_]+/[A-Za-z0-9_]+/[A-Za-z0-9_.:+ -]+", build_id):
+    raise SystemExit(f"Invalid Terminal target-id-date build_id: {build_id!r}")
+PY
 
 python3 -m json.tool "$PAYLOAD_DIR/vm_config.json" >/dev/null
 
