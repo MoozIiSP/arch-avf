@@ -22,6 +22,7 @@ require() {
 
 require awk
 require dd
+require e2fsck
 require losetup
 require mkfs.ext4
 require mkfs.vfat
@@ -75,7 +76,7 @@ EFI_DEV="${LOOP_DEV}p2"
 
 echo "==> Formatting partitions"
 sudo mkfs.vfat -F 32 -n ESP "$EFI_DEV"
-sudo mkfs.ext4 -F -L archlinux "$ROOT_DEV"
+sudo mkfs.ext4 -F -L archlinux -O ^metadata_csum,^orphan_file "$ROOT_DEV"
 
 echo "==> Populating EFI partition"
 sudo mount "$EFI_DEV" "$EFI_MNT"
@@ -94,7 +95,7 @@ sudo cp "$INITRD" "$ROOT_MNT/boot/initrd.img"
 sudo mkdir -p "$ROOT_MNT/mnt/internal" "$ROOT_MNT/mnt/shared" "$ROOT_MNT/mnt/backup"
 sudo sync
 sudo umount "$ROOT_MNT"
-sudo tune2fs -O ^orphan_file "$ROOT_DEV"
+sudo e2fsck -fy "$ROOT_DEV"
 
 echo "==> Extracting AVF partition payload files"
 sector_size="$(sfdisk -J "$DISK_IMG" | python3 -c 'import json,sys; print(json.load(sys.stdin)["partitiontable"]["sectorsize"])')"
