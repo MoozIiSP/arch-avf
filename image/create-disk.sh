@@ -76,7 +76,10 @@ EFI_DEV="${LOOP_DEV}p2"
 
 echo "==> Formatting partitions"
 sudo mkfs.vfat -F 32 -n ESP "$EFI_DEV"
-sudo mkfs.ext4 -F -L archlinux -O ^metadata_csum,^orphan_file "$ROOT_DEV"
+sudo mkfs.ext4 -F -L archlinux \
+    -O ^metadata_csum,^orphan_file \
+    -E lazy_itable_init=0,lazy_journal_init=0 \
+    "$ROOT_DEV"
 
 echo "==> Populating EFI partition"
 sudo mount "$EFI_DEV" "$EFI_MNT"
@@ -96,6 +99,7 @@ sudo mkdir -p "$ROOT_MNT/mnt/internal" "$ROOT_MNT/mnt/shared" "$ROOT_MNT/mnt/bac
 sudo sync
 sudo umount "$ROOT_MNT"
 sudo e2fsck -fy "$ROOT_DEV"
+sudo sync
 
 echo "==> Extracting AVF partition payload files"
 sector_size="$(sfdisk -J "$DISK_IMG" | python3 -c 'import json,sys; print(json.load(sys.stdin)["partitiontable"]["sectorsize"])')"
