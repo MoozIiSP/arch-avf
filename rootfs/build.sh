@@ -104,7 +104,7 @@ cat >> /home/"$DROID_USER"/.bashrc <<'EOF'
 # Match Android Terminal's Debian shell title behavior.
 trap 'echo -ne "\e]0;$BASH_COMMAND\007"' DEBUG
 EOF
-chown "$DROID_USER:\$primary_group" /home/"$DROID_USER"/.bashrc
+chown "$DROID_USER:100" /home/"$DROID_USER"/.bashrc
 ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
 echo 'LANG=en_US.UTF-8' > /etc/locale.conf
