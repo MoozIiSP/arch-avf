@@ -7,7 +7,7 @@ BUILD_DIR="${BUILD_DIR:-$PROJECT_DIR/build/kernel}"
 CONFIG_FRAGMENT="$PROJECT_DIR/config/kernel_fragment"
 DEBIAN_KERNEL_CONFIG="$PROJECT_DIR/config/debian_kernel_config"
 
-KERNEL_VERSION="${KERNEL_VERSION:-6.1.169}"
+KERNEL_VERSION="${KERNEL_VERSION:-6.12.60}"
 KERNEL_MAJOR="${KERNEL_MAJOR:-6.x}"
 KERNEL_BASE_CONFIG="${KERNEL_BASE_CONFIG:-debian_avf}"
 KERNEL_TARBALL_URL="${KERNEL_TARBALL_URL:-https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$KERNEL_VERSION.tar.xz}"

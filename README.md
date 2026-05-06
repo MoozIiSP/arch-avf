@@ -84,15 +84,16 @@ build/arch-avf-replace.tar.gz.sha256
 Tunable environment variables:
 
 ```bash
-KERNEL_VERSION=6.1.169 make kernel
+KERNEL_VERSION=6.12.60 make kernel
 ROOT_SIZE_MB=8192 EFI_SIZE_MB=100 make image
 ROOT_PASSWORD=secret DROID_PASSWORD=secret make rootfs
 TARGET_DIR=/sdcard/linux make deploy
 ```
 
 `APPLY_AVF_PATCHES=auto` is the default. Android's `android-16.0.0_r3`
-kernel patch set is applied for Linux 6.1.x builds, matching the Terminal
-Debian payload used as the kernel and VM configuration reference.
+kernel patch set is only applied for Linux 6.1.x builds; the default Linux
+6.12.x build follows the Terminal Debian kernel generation shape while using
+upstream 6.12 virtio support.
 
 ## Deploy
 
