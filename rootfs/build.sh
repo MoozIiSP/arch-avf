@@ -111,10 +111,10 @@ for group in wheel sudo video render seat; do
 done
 echo "$DROID_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/10-avf-droid
 chmod 0440 /etc/sudoers.d/10-avf-droid
-cat >> /home/"$DROID_USER"/.bashrc <<'EOF'
-# Match Android Terminal's Debian shell title behavior.
-trap 'echo -ne "\e]0;$BASH_COMMAND\007"' DEBUG
-EOF
+printf '%s\n' \
+    '# Match Android Terminal'\''s Debian shell title behavior.' \
+    'trap '\''echo -ne "\e]0;$BASH_COMMAND\007"'\'' DEBUG' \
+    >> /home/"$DROID_USER"/.bashrc
 chown "$DROID_USER:100" /home/"$DROID_USER"/.bashrc
 ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
