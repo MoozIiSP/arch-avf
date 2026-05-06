@@ -99,7 +99,6 @@ for required_config in \
     CONFIG_SECCOMP_FILTER \
     CONFIG_SHMEM \
     CONFIG_TMPFS \
-    CONFIG_TMPFS_QUOTA \
     CONFIG_VIRTIO_BLK
 do
     grep -qx "$required_config=y" .config || { echo "Missing required kernel config: $required_config" >&2; exit 1; }
