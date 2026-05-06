@@ -86,7 +86,14 @@ if ! getent group 100 >/dev/null; then
     groupadd -g 100 android
 fi
 primary_group="\$(getent group 100 | cut -d: -f1)"
-id -u "$DROID_USER" >/dev/null 2>&1 || useradd -m -u 1000 -g "\$primary_group" -s /usr/bin/bash "$DROID_USER"
+existing_uid1000="\$(getent passwd 1000 | cut -d: -f1 || true)"
+if id -u "$DROID_USER" >/dev/null 2>&1; then
+    usermod -u 1000 -g "\$primary_group" -s /usr/bin/bash "$DROID_USER"
+elif [ -n "\$existing_uid1000" ]; then
+    usermod -l "$DROID_USER" -d /home/"$DROID_USER" -m -g "\$primary_group" -s /usr/bin/bash "\$existing_uid1000"
+else
+    useradd -m -u 1000 -g "\$primary_group" -s /usr/bin/bash "$DROID_USER"
+fi
 printf '%s:%s\n' "$DROID_USER" "$DROID_PASSWORD" | chpasswd
 for group in wheel sudo video render seat; do
     getent group "\$group" >/dev/null && usermod -aG "\$group" "$DROID_USER"
