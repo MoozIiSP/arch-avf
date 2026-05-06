@@ -9,7 +9,7 @@ KERNEL="${KERNEL:-$PROJECT_DIR/build/kernel/vmlinuz}"
 KERNEL_EFI="${KERNEL_EFI:-$PROJECT_DIR/build/kernel/BOOTAA64.EFI}"
 INITRD="${INITRD:-$PROJECT_DIR/build/initrd.img}"
 
-EFI_SIZE_MB="${EFI_SIZE_MB:-100}"
+EFI_SIZE_MB="${EFI_SIZE_MB:-256}"
 ROOT_SIZE_MB="${ROOT_SIZE_MB:-8192}"
 
 DISK_IMG="$BUILD_DIR/disk.img"
@@ -81,7 +81,6 @@ echo "==> Populating EFI partition"
 sudo mount "$EFI_DEV" "$EFI_MNT"
 sudo mkdir -p "$EFI_MNT/EFI/BOOT"
 sudo cp "$KERNEL_EFI" "$EFI_MNT/EFI/BOOT/BOOTAA64.EFI"
-sudo cp "$KERNEL" "$EFI_MNT/vmlinuz"
 sudo cp "$INITRD" "$EFI_MNT/initrd.img"
 sudo sync
 sudo umount "$EFI_MNT"

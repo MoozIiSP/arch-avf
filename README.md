@@ -85,7 +85,7 @@ Tunable environment variables:
 
 ```bash
 KERNEL_VERSION=6.12.85 make kernel
-ROOT_SIZE_MB=8192 EFI_SIZE_MB=100 make image
+ROOT_SIZE_MB=8192 EFI_SIZE_MB=256 make image
 ROOT_PASSWORD=secret DROID_PASSWORD=secret make rootfs
 TARGET_DIR=/sdcard/linux make deploy
 ```
