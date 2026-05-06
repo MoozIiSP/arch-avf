@@ -8,7 +8,7 @@ CONFIG_FRAGMENT="$PROJECT_DIR/config/kernel_fragment"
 
 KERNEL_VERSION="${KERNEL_VERSION:-6.12.85}"
 KERNEL_MAJOR="${KERNEL_MAJOR:-6.x}"
-KERNEL_BASE_CONFIG="${KERNEL_BASE_CONFIG:-defconfig}"
+KERNEL_BASE_CONFIG="${KERNEL_BASE_CONFIG:-tinyconfig}"
 KERNEL_TARBALL_URL="${KERNEL_TARBALL_URL:-https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$KERNEL_VERSION.tar.xz}"
 ANDROID_VIRT_REPO="${ANDROID_VIRT_REPO:-https://android.googlesource.com/platform/packages/modules/Virtualization}"
 ANDROID_VIRT_REV="${ANDROID_VIRT_REV:-android-16.0.0_r3}"
@@ -79,6 +79,8 @@ make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
 for required_config in \
     CONFIG_BINFMT_ELF \
     CONFIG_BINFMT_SCRIPT \
+    CONFIG_ARM64_BTI \
+    CONFIG_ARM64_PTR_AUTH \
     CONFIG_CGROUPS \
     CONFIG_DEVTMPFS_MOUNT \
     CONFIG_EXT4_FS \
