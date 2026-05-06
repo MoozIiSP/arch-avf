@@ -74,11 +74,22 @@ cleanup() {
 trap cleanup EXIT
 
 chroot "$ROOTFS_DIR" /bin/bash -eux <<CHROOT
+pacman_retry() {
+    local attempt
+    for attempt in 1 2 3; do
+        if pacman "\$@"; then
+            return 0
+        fi
+        sleep "\$((attempt * 10))"
+        pacman -Sy --noconfirm || true
+    done
+    pacman "\$@"
+}
 pacman-key --init
 pacman-key --populate archlinuxarm
 pacman -Rns --noconfirm linux-aarch64 linux-firmware || true
-pacman -Syu --noconfirm
-pacman -S --needed --noconfirm $PACKAGES
+pacman_retry -Syu --noconfirm
+pacman_retry -S --needed --noconfirm $PACKAGES
 ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 echo archlinux > /etc/hostname
 printf 'root:%s\n' "$ROOT_PASSWORD" | chpasswd
