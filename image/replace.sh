@@ -103,6 +103,23 @@ step_2() {
     sync
   done
 
+  local arch_mnt
+  arch_mnt="$(mktemp -d)"
+  sudo mount "$target" "$arch_mnt"
+  sudo mkdir -p "$arch_mnt/usr/lib/avf"
+  local binary source
+  for binary in forwarder_guest forwarder_guest_launcher storage_balloon_agent shutdown_runner; do
+    for source in "/usr/lib/avf/$binary" "/usr/bin/$binary" "/usr/local/bin/$binary" "/usr/bin/${binary//_/-}" "/usr/local/bin/${binary//_/-}"; do
+      if [ -x "$source" ]; then
+        sudo install -Dm755 "$source" "$arch_mnt/usr/lib/avf/$binary"
+        break
+      fi
+    done
+  done
+  sudo sync
+  sudo umount "$arch_mnt"
+  rmdir "$arch_mnt"
+
   cp "$IMG_LOC/efi_part" .
   sudo umount /boot/efi || true
   sudo umount /kernel_extras || true

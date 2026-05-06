@@ -1,7 +1,7 @@
 [Unit]
 Description=Android AVF storage balloon agent
-After=network.target mnt-internal.mount
-Wants=network.target mnt-internal.mount
+After=network.target virtiofs_internal.service
+Wants=network.target virtiofs_internal.service
 ConditionPathExists=/usr/lib/avf/storage_balloon_agent
 
 [Service]

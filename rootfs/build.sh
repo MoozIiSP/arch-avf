@@ -82,11 +82,22 @@ pacman -S --needed --noconfirm $PACKAGES
 ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 echo archlinux > /etc/hostname
 printf 'root:%s\n' "$ROOT_PASSWORD" | chpasswd
-id -u "$DROID_USER" >/dev/null 2>&1 || useradd -m -s /bin/bash "$DROID_USER"
+if ! getent group 100 >/dev/null; then
+    groupadd -g 100 android
+fi
+primary_group="\$(getent group 100 | cut -d: -f1)"
+id -u "$DROID_USER" >/dev/null 2>&1 || useradd -m -u 1000 -g "\$primary_group" -s /usr/bin/bash "$DROID_USER"
 printf '%s:%s\n' "$DROID_USER" "$DROID_PASSWORD" | chpasswd
-for group in wheel video render seat; do
+for group in wheel sudo video render seat; do
     getent group "\$group" >/dev/null && usermod -aG "\$group" "$DROID_USER"
 done
+echo "$DROID_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/10-avf-droid
+chmod 0440 /etc/sudoers.d/10-avf-droid
+cat >> /home/"$DROID_USER"/.bashrc <<'EOF'
+# Match Android Terminal's Debian shell title behavior.
+trap 'echo -ne "\e]0;$BASH_COMMAND\007"' DEBUG
+EOF
+chown "$DROID_USER:\$primary_group" /home/"$DROID_USER"/.bashrc
 ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
 echo 'LANG=en_US.UTF-8' > /etc/locale.conf
@@ -100,6 +111,7 @@ rm -rf "$ROOTFS_DIR/var/cache/pacman/pkg/"*
 
 cp -a /overlay/. "$ROOTFS_DIR/"
 chmod 0755 "$ROOTFS_DIR/usr/local/lib/avf/make-ttyd-cert"
+chmod 0755 "$ROOTFS_DIR/usr/local/bin/enable_display"
 find "$ROOTFS_DIR/etc/systemd/system" -type f -name '*.service' -exec sed -i "s/@DROID_USER@/$DROID_USER/g" {} +
 mkdir -p "$ROOTFS_DIR/usr/lib/avf"
 for binary in forwarder_guest forwarder_guest_launcher storage_balloon_agent shutdown_runner; do
@@ -122,6 +134,12 @@ cat > "$ROOTFS_DIR/etc/sudoers.d/10-avf-wheel" <<'EOF'
 %wheel ALL=(ALL:ALL) NOPASSWD: ALL
 EOF
 chmod 0440 "$ROOTFS_DIR/etc/sudoers.d/10-avf-wheel"
+
+mkdir -p "$ROOTFS_DIR/etc/systemd/resolved.conf.d"
+cat > "$ROOTFS_DIR/etc/systemd/resolved.conf.d/10-avf.conf" <<'EOF'
+[Resolve]
+LLMNR=no
+EOF
 
 mkdir -p "$ROOTFS_DIR/etc/systemd/system/serial-getty@ttyS0.service.d"
 cat > "$ROOTFS_DIR/etc/systemd/system/serial-getty@ttyS0.service.d/override.conf" <<'EOF'
@@ -153,14 +171,15 @@ systemctl enable \
     systemd-resolved.service \
     serial-getty@ttyS0.service \
     seatd.service \
-    mnt-internal.mount \
-    mnt-shared.mount \
+    virtiofs_internal.service \
+    virtiofs.service \
+    backup_mount.service \
     storage_balloon_agent.service \
     forwarder_guest_launcher.service \
     shutdown_runner.service \
     ttyd.service \
     avahi-daemon.service \
-    avahi-ttyd.service
+    avahi_ttyd.service
 systemctl set-default multi-user.target
 rm -f /etc/systemd/system/network-online.target.wants/NetworkManager-wait-online.service
 mkinitcpio -k "$KERNEL_RELEASE" -g /boot/initrd.img
