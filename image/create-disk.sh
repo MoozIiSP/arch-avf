@@ -75,7 +75,7 @@ EFI_DEV="${LOOP_DEV}p2"
 
 echo "==> Formatting partitions"
 sudo mkfs.vfat -F 32 -n ESP "$EFI_DEV"
-sudo mkfs.ext4 -F -L archlinux "$ROOT_DEV"
+sudo mkfs.ext4 -F -L archlinux -O '^metadata_csum,^metadata_csum_seed,^orphan_file' "$ROOT_DEV"
 
 echo "==> Populating EFI partition"
 sudo mount "$EFI_DEV" "$EFI_MNT"
