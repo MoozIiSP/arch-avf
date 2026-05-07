@@ -22,6 +22,7 @@ require() {
 
 require awk
 require dd
+require e2fsck
 require losetup
 require mkfs.ext4
 require mkfs.vfat
@@ -93,6 +94,9 @@ sudo cp "$INITRD" "$ROOT_MNT/boot/initrd.img"
 sudo mkdir -p "$ROOT_MNT/mnt/internal" "$ROOT_MNT/mnt/shared" "$ROOT_MNT/mnt/backup"
 sudo sync
 sudo umount "$ROOT_MNT"
+
+echo "==> Optimizing and checking root filesystem"
+sudo e2fsck -fyD "$ROOT_DEV"
 
 echo "==> Extracting AVF partition payload files"
 sector_size="$(sfdisk -J "$DISK_IMG" | python3 -c 'import json,sys; print(json.load(sys.stdin)["partitiontable"]["sectorsize"])')"
