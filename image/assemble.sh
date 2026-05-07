@@ -49,17 +49,22 @@ if [ -f "$BUILD_DIR/kernel/kernel.release" ]; then
     kernel_release="$(cat "$BUILD_DIR/kernel/kernel.release")"
 fi
 arch_release="${ARCH_RELEASE:-$(date -u +%Y.%m.%d)}"
-timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
-printf 'archlinux/aarch64/%s-%s-%s\n' "$arch_release" "$kernel_release" "$timestamp" > "$PAYLOAD_DIR/build_id"
+build_target="archlinux/aarch64/${arch_release}-${kernel_release}"
+build_number="${BUILD_NUMBER:-${GITHUB_RUN_NUMBER:-$(date -u +%s)}}"
+build_timestamp="$(LC_ALL=C TZ=UTC date '+%a %b %d %H:%M:%S UTC %Y')"
+printf '%s-%s-%s\n' "$build_target" "$build_number" "$build_timestamp" > "$PAYLOAD_DIR/build_id"
 
 python3 - "$PAYLOAD_DIR/build_id" <<'PY'
+import datetime as dt
 import pathlib
 import re
 import sys
 
 build_id = pathlib.Path(sys.argv[1]).read_text().strip()
-if not re.fullmatch(r"[A-Za-z0-9_]+/[A-Za-z0-9_]+/[A-Za-z0-9_.:+ -]+", build_id):
+match = re.fullmatch(r"^(.*?)-(\d+)-(.*)$", build_id)
+if not match:
     raise SystemExit(f"Invalid Terminal target-id-date build_id: {build_id!r}")
+dt.datetime.strptime(match.group(3), "%a %b %d %H:%M:%S %Z %Y")
 PY
 
 python3 -m json.tool "$PAYLOAD_DIR/vm_config.json" >/dev/null

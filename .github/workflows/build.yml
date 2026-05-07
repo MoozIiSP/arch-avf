@@ -65,4 +65,4 @@ jobs:
 
             Debuggable/userdebug builds: push `archlinux-avf-aarch64-images.tar.gz` as `/sdcard/linux/images.tar.gz`, then restart Terminal to auto-install.
 
-            Production/user builds: install Google's Debian Terminal image first, extract `archlinux-avf-aarch64-replace.tar.gz` to `Download/image`, then run `bash /mnt/shared/image/replace.sh` inside Terminal. Terminal will reboot; reopen it and let the script finish the second stage.
+            Production/user builds: install Google's Debian Terminal image first, extract `archlinux-avf-aarch64-replace.tar.gz` to `Download/image`, then run `bash /mnt/shared/Download/image/replace.sh` inside Terminal. Terminal will reboot; reopen it and let the script finish the second stage.

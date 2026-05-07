@@ -33,7 +33,8 @@ check:
 	@test -s "$(PAYLOAD_DIR)/efi_part"
 	@test -s "$(BUILD_DIR)/images.tar.gz"
 	@python3 -m json.tool "$(PAYLOAD_DIR)/vm_config.json" >/dev/null
-	@python3 -c 'import pathlib,re,sys; build_id=pathlib.Path(sys.argv[1]).read_text().strip(); assert re.fullmatch(r"[A-Za-z0-9_]+/[A-Za-z0-9_]+/[A-Za-z0-9_.:+ -]+", build_id), f"Invalid Terminal target-id-date build_id: {build_id!r}"; print(f"Android Terminal build_id: {build_id}")' "$(PAYLOAD_DIR)/build_id"
+	@python3 -c 'import datetime as dt,pathlib,re,sys; build_id=pathlib.Path(sys.argv[1]).read_text().strip(); m=re.fullmatch(r"^(.*?)-(\d+)-(.*)$", build_id); assert m, f"Invalid Terminal target-id-date build_id: {build_id!r}"; dt.datetime.strptime(m.group(3), "%a %b %d %H:%M:%S %Z %Y"); print(f"Android Terminal build_id: {build_id}")' "$(PAYLOAD_DIR)/build_id"
+	@python3 -c 'import pathlib,sys; kernel=pathlib.Path(sys.argv[1]).read_bytes(); assert len(kernel) >= 64, "Kernel image is unexpectedly short"; assert kernel[:2] != b"\x1f\x8b", "vmlinuz is gzip-compressed; crosvm expects raw arm64 Image"; assert kernel[56:60] == b"ARM\x64", f"Unexpected arm64 Image magic: {kernel[56:60]!r}"; print(f"Android Terminal kernel header OK: {sys.argv[1]}")' "$(PAYLOAD_DIR)/vmlinuz"
 	@echo "Android import image is complete: $(BUILD_DIR)/images.tar.gz"
 
 clean:

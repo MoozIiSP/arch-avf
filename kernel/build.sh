@@ -109,10 +109,24 @@ rm -rf /output/modules
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- INSTALL_MOD_PATH=/output/modules modules_install
 find /output/modules/lib/modules -type l \( -name build -o -name source \) -delete
 
-# Android Terminal's Debian image ships a gzip-compressed arm64 Image here.
-cp arch/arm64/boot/Image.gz /output/vmlinuz
-cp arch/arm64/boot/Image.gz /output/BOOTAA64.EFI
+# Android Terminal feeds $PAYLOAD_DIR/vmlinuz directly to crosvm, which expects
+# the raw arm64 Image header rather than a gzip stream.
+cp arch/arm64/boot/Image /output/vmlinuz
+cp arch/arm64/boot/Image /output/BOOTAA64.EFI
 cp .config /output/kernel.config
+python3 - <<'PY'
+from pathlib import Path
+
+kernel = Path("/output/vmlinuz").read_bytes()
+if len(kernel) < 64:
+    raise SystemExit("Kernel image is unexpectedly short")
+if kernel[:2] == b"\x1f\x8b":
+    raise SystemExit("Refusing to publish gzip-compressed kernel as vmlinuz")
+if kernel[56:60] != b"ARM\x64":
+    raise SystemExit(
+        f"Unexpected arm64 Image magic at offset 56: {kernel[56:60]!r}"
+    )
+PY
 SCRIPT
 
 cp "$BUILD_DIR/vmlinuz" "$PROJECT_DIR/build/vmlinuz"

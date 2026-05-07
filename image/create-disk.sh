@@ -32,10 +32,10 @@ require sudo
 require tar
 require truncate
 
-[ -f "$ROOTFS_TAR" ] || { echo "Missing rootfs tarball: $ROOTFS_TAR" >&2; exit 1; }
-[ -f "$KERNEL" ] || { echo "Missing kernel: $KERNEL" >&2; exit 1; }
-[ -f "$KERNEL_EFI" ] || { echo "Missing EFI kernel stub: $KERNEL_EFI" >&2; exit 1; }
-[ -f "$INITRD" ] || { echo "Missing initrd: $INITRD" >&2; exit 1; }
+[ -s "$ROOTFS_TAR" ] || { echo "Missing or empty rootfs tarball: $ROOTFS_TAR" >&2; exit 1; }
+[ -s "$KERNEL" ] || { echo "Missing or empty kernel: $KERNEL" >&2; exit 1; }
+[ -s "$KERNEL_EFI" ] || { echo "Missing or empty EFI kernel stub: $KERNEL_EFI" >&2; exit 1; }
+[ -s "$INITRD" ] || { echo "Missing or empty initrd: $INITRD" >&2; exit 1; }
 
 mkdir -p "$BUILD_DIR"
 rm -f "$DISK_IMG" "$ROOT_PART" "$EFI_PART"

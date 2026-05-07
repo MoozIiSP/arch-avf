@@ -23,12 +23,18 @@ vmlinuz
 initrd.img
 ```
 
-`vm_config.json` describes the VM and points AVF at the payload files through `$PAYLOAD_DIR`. `root_part` is a writable ext4 filesystem image mounted as `/dev/vda1`. `efi_part` is a vfat EFI system partition. The image includes both an EFI-stub kernel at `EFI/BOOT/BOOTAA64.EFI` and a direct AVF `kernel` entry for compatibility while the Terminal import path evolves.
+`vm_config.json` describes the VM and points AVF at the payload files through `$PAYLOAD_DIR`. `root_part` is a writable ext4 filesystem image mounted as `/dev/vda1`. `efi_part` is a vfat EFI system partition. The image includes both an EFI-stub arm64 `Image` copied to `EFI/BOOT/BOOTAA64.EFI` and a direct AVF `kernel` entry for compatibility while the Terminal import path evolves.
 
-`build_id` must use Android Terminal's three-field target-id-date shape:
+`build_id` must use the exact `target-id-date` shape accepted by the Android 16 Terminal APK:
 
 ```text
-archlinux/aarch64/<arch-release>-<kernel-release>-<utc-build-time>
+<target>-<integer-build-id>-<EEE MMM dd HH:mm:ss UTC yyyy>
+```
+
+Example:
+
+```text
+archlinux/aarch64/2026.05.08-6.12.60-arch-avf-1778203200-Thu May 08 01:20:00 UTC 2026
 ```
 
 The checked-in config uses:
@@ -131,7 +137,7 @@ On normal production Android builds, use the replace package:
 4. Open Terminal and run:
 
 ```bash
-bash /mnt/shared/image/replace.sh
+bash /mnt/shared/Download/image/replace.sh
 ```
 
 Terminal will reboot after stage 1. Reopen Terminal; the script should start automatically and perform the longer stage 2 replacement. Reopen Terminal once more after it exits.
