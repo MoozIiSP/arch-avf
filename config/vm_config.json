@@ -19,7 +19,7 @@
     "sharedPath": [{"sharedPath": "/storage/emulated"}, {"sharedPath": "$APP_DATA_DIR/files"}],
     "kernel": "$PAYLOAD_DIR/vmlinuz",
     "initrd": "$PAYLOAD_DIR/initrd.img",
-    "params": "root=/dev/vda1 rw ds=nocloud arm64.nompam 8250.nr_uarts=4 console=ttyS0",
+    "params": "root=/dev/vda1 rw rootwait ds=nocloud arm64.nompam 8250.nr_uarts=4 console=ttyS0",
     "protected": false,
     "cpu_topology": "match_host",
     "platform_version": "~1.0",
