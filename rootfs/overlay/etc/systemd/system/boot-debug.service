@@ -1,0 +1,14 @@
+[Unit]
+Description=Collect Android Terminal Arch boot diagnostics
+DefaultDependencies=no
+After=local-fs.target systemd-udevd.service
+Before=network.target multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/avf/boot-debug
+User=root
+Group=root
+
+[Install]
+WantedBy=sysinit.target

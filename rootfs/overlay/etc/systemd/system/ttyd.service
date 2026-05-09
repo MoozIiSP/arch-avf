@@ -1,12 +1,12 @@
 [Unit]
 Description=Android Terminal web console
-After=syslog.target network.target virtiofs_internal.service
-Wants=network.target virtiofs_internal.service
+After=syslog.target network.target
+Wants=network.target
 ConditionPathExists=/usr/bin/ttyd
 
 [Service]
 ExecStartPre=/usr/local/lib/avf/make-ttyd-cert
-ExecStart=/usr/bin/ttyd --ssl --ssl-cert /etc/ttyd/server.crt --ssl-key /etc/ttyd/server.key --ssl-ca /mnt/internal/ca.crt -t disableLeaveAlert=true -W login -f @DROID_USER@
+ExecStart=/usr/local/lib/avf/start-ttyd
 Restart=always
 RestartSec=1
 User=root

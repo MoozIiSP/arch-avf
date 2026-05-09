@@ -46,8 +46,6 @@ jobs:
 
       - name: Package payload
         run: |
-          cp build/images.tar.gz archlinux-avf-aarch64-images.tar.gz
-          sha256sum archlinux-avf-aarch64-images.tar.gz > archlinux-avf-aarch64-images.tar.gz.sha256
           cp build/arch-avf-replace.tar.gz archlinux-avf-aarch64-replace.tar.gz
           sha256sum archlinux-avf-aarch64-replace.tar.gz > archlinux-avf-aarch64-replace.tar.gz.sha256
 
@@ -56,13 +54,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            archlinux-avf-aarch64-images.tar.gz
-            archlinux-avf-aarch64-images.tar.gz.sha256
             archlinux-avf-aarch64-replace.tar.gz
             archlinux-avf-aarch64-replace.tar.gz.sha256
           body: |
             Arch Linux ARM image for Android 16 AVF Terminal app.
 
-            Debuggable/userdebug builds: push `archlinux-avf-aarch64-images.tar.gz` as `/sdcard/linux/images.tar.gz`, then restart Terminal to auto-install.
+            This release publishes the production `replace` package only.
 
             Production/user builds: install Google's Debian Terminal image first, extract `archlinux-avf-aarch64-replace.tar.gz` to `Download/image`, then run `bash /mnt/shared/Download/image/replace.sh` inside Terminal. Terminal will reboot; reopen it and let the script finish the second stage.

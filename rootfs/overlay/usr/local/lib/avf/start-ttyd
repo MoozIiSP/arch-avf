@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+args=(
+    --interface
+    0.0.0.0
+    --port
+    7681
+    --ssl
+    --ssl-cert
+    /etc/ttyd/server.crt
+    --ssl-key
+    /etc/ttyd/server.key
+    -t
+    disableLeaveAlert=true
+)
+
+args+=(
+    -W
+    su
+    -
+    @DROID_USER@
+)
+
+exec /usr/bin/ttyd "${args[@]}"

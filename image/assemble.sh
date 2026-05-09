@@ -7,6 +7,7 @@ BUILD_DIR="${BUILD_DIR:-$PROJECT_DIR/build}"
 PAYLOAD_DIR="${PAYLOAD_DIR:-$BUILD_DIR/payload}"
 IMAGE_DIR="$BUILD_DIR/image"
 PARTITION_UUIDS="$IMAGE_DIR/partition-uuids.env"
+CIDATA_IMAGE="$BUILD_DIR/cidata.iso"
 ANDROID_IMAGE="$BUILD_DIR/images.tar.gz"
 REPLACE_IMAGE="$BUILD_DIR/arch-avf-replace.tar.gz"
 
@@ -69,29 +70,55 @@ PY
 
 python3 -m json.tool "$PAYLOAD_DIR/vm_config.json" >/dev/null
 
-echo "==> Packaging Android Terminal import image"
-tar -C "$PAYLOAD_DIR" -czf "$ANDROID_IMAGE" \
-    build_id \
-    root_part \
-    efi_part \
-    vm_config.json \
-    vmlinuz \
-    initrd.img
-sha256sum "$ANDROID_IMAGE" > "$ANDROID_IMAGE.sha256"
+need_cidata=0
+if grep -q 'cidata\.iso' "$PAYLOAD_DIR/vm_config.json"; then
+    need_cidata=1
+fi
+if [ "$need_cidata" = 1 ] && [ -s "$CIDATA_IMAGE" ]; then
+    copy_required "$CIDATA_IMAGE" "$PAYLOAD_DIR/cidata.iso"
+fi
+
+if [ "$need_cidata" = 0 ] || [ -s "$PAYLOAD_DIR/cidata.iso" ]; then
+    echo "==> Packaging Android Terminal import image"
+    import_contents=(
+        build_id
+        root_part
+        efi_part
+        vm_config.json
+        vmlinuz
+        initrd.img
+    )
+    if [ -s "$PAYLOAD_DIR/cidata.iso" ]; then
+        import_contents+=(cidata.iso)
+    fi
+    tar -C "$PAYLOAD_DIR" -czf "$ANDROID_IMAGE" "${import_contents[@]}"
+    sha256sum "$ANDROID_IMAGE" > "$ANDROID_IMAGE.sha256"
+else
+    echo "==> Skipping Android Terminal import image: vm_config.json requires cidata.iso, but $CIDATA_IMAGE is absent"
+    rm -f "$ANDROID_IMAGE" "$ANDROID_IMAGE.sha256"
+fi
 
 echo "==> Packaging production replace image"
 cp "$SCRIPT_DIR/replace.sh" "$PAYLOAD_DIR/replace.sh"
 chmod 0755 "$PAYLOAD_DIR/replace.sh"
-tar -C "$PAYLOAD_DIR" -czf "$REPLACE_IMAGE" \
-    build_id \
-    root_part \
-    efi_part \
-    vm_config.json \
-    vmlinuz \
-    initrd.img \
+replace_contents=(
+    build_id
+    root_part
+    efi_part
+    vm_config.json
+    vmlinuz
+    initrd.img
     replace.sh
+)
+if [ -s "$PAYLOAD_DIR/cidata.iso" ]; then
+    replace_contents+=(cidata.iso)
+fi
+tar -C "$PAYLOAD_DIR" -czf "$REPLACE_IMAGE" "${replace_contents[@]}"
 sha256sum "$REPLACE_IMAGE" > "$REPLACE_IMAGE.sha256"
 
 echo "==> Payload contents"
 ls -lh "$PAYLOAD_DIR"
-ls -lh "$ANDROID_IMAGE" "$ANDROID_IMAGE.sha256" "$REPLACE_IMAGE" "$REPLACE_IMAGE.sha256"
+if [ -f "$ANDROID_IMAGE" ]; then
+    ls -lh "$ANDROID_IMAGE" "$ANDROID_IMAGE.sha256"
+fi
+ls -lh "$REPLACE_IMAGE" "$REPLACE_IMAGE.sha256"

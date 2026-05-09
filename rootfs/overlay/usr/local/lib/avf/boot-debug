@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -u
+
+shared=/mnt/shared
+internal=/mnt/internal
+log="$shared/arch-boot-debug.log"
+journal="$shared/arch-journal.log"
+
+mkdir -p "$shared" "$internal"
+mountpoint -q "$shared" || mount -t virtiofs android "$shared" 2>/tmp/arch-boot-debug.mount-shared.err || true
+mountpoint -q "$internal" || mount -t virtiofs internal "$internal" 2>/tmp/arch-boot-debug.mount-internal.err || true
+
+if ! mountpoint -q "$shared"; then
+    log=/run/arch-boot-debug.log
+    journal=/run/arch-journal.log
+fi
+
+exec >"$log" 2>&1
+
+section() {
+    printf '\n===== %s =====\n' "$1"
+}
+
+section "time"
+date -Is || true
+uptime || true
+
+section "system"
+uname -a || true
+cat /etc/os-release || true
+cat /proc/cmdline || true
+
+section "mount attempts"
+cat /tmp/arch-boot-debug.mount-shared.err 2>/dev/null || true
+cat /tmp/arch-boot-debug.mount-internal.err 2>/dev/null || true
+findmnt /mnt/shared /mnt/internal || true
+mount | grep -E 'virtiofs|/mnt/(shared|internal)' || true
+
+section "network"
+ip addr || true
+ip route || true
+resolvectl status || true
+
+section "listening sockets"
+ss -lntup || true
+
+section "failed units"
+systemctl --failed --no-pager || true
+
+section "service status"
+for unit in \
+    NetworkManager.service \
+    systemd-networkd.service \
+    systemd-resolved.service \
+    dbus.service \
+    avahi-daemon.service \
+    ttyd.service \
+    avahi_ttyd.service \
+    virtiofs.service \
+    virtiofs_internal.service \
+    forwarder_guest_launcher.service \
+    sshd.service; do
+    printf '\n--- %s ---\n' "$unit"
+    systemctl status "$unit" --no-pager --full || true
+done
+
+section "unit definitions"
+systemctl cat ttyd.service avahi_ttyd.service avahi-daemon.service --no-pager || true
+
+section "important paths"
+ls -la /etc/ttyd /etc/avahi/services /mnt/shared /mnt/internal 2>/dev/null || true
+ls -la /usr/lib/avf 2>/dev/null || true
+
+journalctl -b --no-pager -n 600 >"$journal" 2>&1 || true
+chmod 0644 "$log" "$journal" 2>/dev/null || true

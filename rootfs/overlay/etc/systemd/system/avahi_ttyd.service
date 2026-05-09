@@ -1,13 +1,14 @@
 [Unit]
 Description=avahi_TTYD
-After=ttyd.service
-Wants=ttyd.service
+After=network.target avahi-daemon.service ttyd.service
+Wants=network.target avahi-daemon.service ttyd.service
 ConditionPathExists=/usr/bin/avahi-publish-service
 
 [Service]
-ExecStart=/usr/bin/avahi-publish-service ttyd _http._tcp 7681
+ExecStart=/usr/bin/avahi-publish-service -s ttyd _http._tcp 7681
 Type=simple
 Restart=always
+RestartSec=1
 User=root
 Group=root
 

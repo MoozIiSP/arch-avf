@@ -6,13 +6,17 @@ Android Virtualization Framework (AVF) is Android's protected virtualization sta
 
 ## Android Terminal Image Format
 
-Android 16 Terminal imports a single archive from:
+The supported artifact in this repository is the production `replace`
+package. It rewrites an already-installed stock Debian Terminal payload in
+place, while preserving the Terminal-managed `cidata.iso` that Debian ships.
+
+Historically, Android 16 Terminal debug builds can import a single archive from:
 
 ```text
 /sdcard/linux/images.tar.gz
 ```
 
-The archive produced by this repo contains:
+The replace archive produced by this repo contains:
 
 ```text
 vm_config.json
@@ -21,9 +25,15 @@ root_part
 efi_part
 vmlinuz
 initrd.img
+replace.sh
 ```
 
-`vm_config.json` describes the VM and points AVF at the payload files through `$PAYLOAD_DIR`. `root_part` is a writable ext4 filesystem image mounted as `/dev/vda1`. `efi_part` is a vfat EFI system partition. The image includes both an EFI-stub arm64 `Image` copied to `EFI/BOOT/BOOTAA64.EFI` and a direct AVF `kernel` entry for compatibility while the Terminal import path evolves.
+`vm_config.json` intentionally follows the Android 16 Debian Terminal layout for
+the supported `replace` flow. The active boot path is direct kernel + initrd +
+`root_part`, plus the existing Terminal-managed `cidata.iso` already present on
+the device after the stock Debian install. `efi_part` is still shipped and
+refreshed during replace so the on-device payload stays aligned with Debian's
+file set.
 
 `build_id` must use the exact `target-id-date` shape accepted by the Android 16 Terminal APK:
 
@@ -70,9 +80,9 @@ Useful targets:
 ```bash
 make kernel            # Cross-compile aarch64 Linux kernel and modules
 make rootfs            # Build Arch Linux ARM rootfs and initrd.img
-make image             # Create root_part, efi_part, payload dir, and images.tar.gz
+make image             # Create root_part, efi_part, payload dir, and the replace package
 make android-services  # Build Android guest service binaries from AOSP
-make deploy            # Push payload to a connected Android device
+make deploy            # Push debug import image when cidata.iso is available
 make clean             # Remove build outputs
 ```
 
@@ -87,8 +97,6 @@ build/kernel/modules/
 build/image/root_part
 build/image/efi_part
 build/payload/
-build/images.tar.gz
-build/images.tar.gz.sha256
 build/arch-avf-replace.tar.gz
 build/arch-avf-replace.tar.gz.sha256
 ```
@@ -117,7 +125,7 @@ Enable the Android Terminal app on an Android 16+ debuggable/userdebug device, c
 make deploy
 ```
 
-The image is pushed to:
+If you also provide a matching `build/cidata.iso`, the debug import image is pushed to:
 
 ```text
 /sdcard/linux/images.tar.gz
@@ -125,7 +133,7 @@ The image is pushed to:
 
 Restart the Terminal app. It should offer to auto-install the image.
 
-Production/user builds do not support installing custom images from `/sdcard/linux/images.tar.gz`.
+Production/user builds do not support installing custom images from `/sdcard/linux/images.tar.gz`, and this repository's releases no longer publish that debug-only archive by default.
 
 ### Production Android builds
 

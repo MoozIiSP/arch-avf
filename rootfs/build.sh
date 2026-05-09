@@ -129,8 +129,11 @@ rm -rf "$ROOTFS_DIR/var/cache/pacman/pkg/"*
 
 cp -a /overlay/. "$ROOTFS_DIR/"
 chmod 0755 "$ROOTFS_DIR/usr/local/lib/avf/make-ttyd-cert"
+chmod 0755 "$ROOTFS_DIR/usr/local/lib/avf/start-ttyd"
+chmod 0755 "$ROOTFS_DIR/usr/local/lib/avf/boot-debug"
 chmod 0755 "$ROOTFS_DIR/usr/local/bin/enable_display"
 find "$ROOTFS_DIR/etc/systemd/system" -type f -name '*.service' -exec sed -i "s/@DROID_USER@/$DROID_USER/g" {} +
+sed -i "s/@DROID_USER@/$DROID_USER/g" "$ROOTFS_DIR/usr/local/lib/avf/start-ttyd"
 mkdir -p "$ROOTFS_DIR/usr/lib/avf"
 for binary in forwarder_guest forwarder_guest_launcher storage_balloon_agent shutdown_runner; do
     if [ -x "/android-services/$binary" ]; then
@@ -186,9 +189,13 @@ chroot "$ROOTFS_DIR" /bin/bash -eux <<CHROOT
 systemctl enable \
     sshd.service \
     NetworkManager.service \
+    dbus.socket \
+    dbus.service \
     systemd-resolved.service \
     serial-getty@ttyS0.service \
     seatd.service \
+    avahi-daemon.socket \
+    avahi-daemon.service \
     virtiofs_internal.service \
     virtiofs.service \
     backup_mount.service \
@@ -196,8 +203,12 @@ systemctl enable \
     forwarder_guest_launcher.service \
     shutdown_runner.service \
     ttyd.service \
-    avahi-daemon.service \
-    avahi_ttyd.service
+    boot-debug.service
+systemctl disable \
+    avahi_ttyd.service \
+    systemd-networkd.service \
+    systemd-networkd.socket \
+    systemd-networkd-wait-online.service || true
 systemctl set-default multi-user.target
 rm -f /etc/systemd/system/network-online.target.wants/NetworkManager-wait-online.service
 mkinitcpio -k "$KERNEL_RELEASE" -g /boot/initrd.img

@@ -2,6 +2,7 @@ base
 base-devel
 mkinitcpio
 systemd
+dbus
 networkmanager
 openssh
 sudo
