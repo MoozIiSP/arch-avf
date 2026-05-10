@@ -2,24 +2,21 @@
     "name": "debian",
     "disks": [
         {
-            "partitions": [
-                {
-                    "label": "ROOT",
-                    "path": "$PAYLOAD_DIR/root_part",
-                    "writable": true,
-                    "guid": "{root_part_guid}"
-                }
-            ],
+            "image": "$PAYLOAD_DIR/root_part",
             "writable": true
-        },
-        {
-            "image": "$PAYLOAD_DIR/cidata.iso"
         }
     ],
-    "sharedPath": [{"sharedPath": "/storage/emulated"}, {"sharedPath": "$APP_DATA_DIR/files"}],
+    "sharedPath": [
+        {
+            "sharedPath": "/storage/emulated"
+        },
+        {
+            "sharedPath": "$APP_DATA_DIR/files"
+        }
+    ],
     "kernel": "$PAYLOAD_DIR/vmlinuz",
     "initrd": "$PAYLOAD_DIR/initrd.img",
-    "params": "root=/dev/vda1 rw rootwait ds=nocloud arm64.nompam 8250.nr_uarts=4 console=ttyS0",
+    "params": "root=/dev/vda rw rootwait ds=nocloud arm64.nompam 8250.nr_uarts=4 console=ttyS0",
     "protected": false,
     "cpu_topology": "match_host",
     "platform_version": "~1.0",
@@ -30,6 +27,8 @@
     "console_input_device": "ttyS0",
     "network": true,
     "auto_memory_balloon": true,
-    "gpu": {"backend": "2d"},
+    "gpu": {
+        "backend": "2d"
+    },
     "boot_timeout_secs": 120
 }

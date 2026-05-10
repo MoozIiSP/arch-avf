@@ -98,24 +98,32 @@ sudo umount "$ROOT_MNT"
 echo "==> Optimizing and checking root filesystem"
 sudo e2fsck -fyD "$ROOT_DEV"
 
-echo "==> Building root_part as GPT disk (Google Debian compatible)"
-rm -f "$ROOT_PART"
-
-# Create GPT disk with just the ROOT partition
-# GPT with 2 partitions: vda1=ROOT (Arch), vda2=temp (for replace.sh stage 2)
-TEMP_SIZE_MB=256
-truncate -s "$((ROOT_SIZE_MB + TEMP_SIZE_MB + 4))M" "$ROOT_PART"
-ROOT_GUID="$(sfdisk --part-uuid "$DISK_IMG" 1)"
-sgdisk -o "$ROOT_PART"     -n "1:2048:+${ROOT_SIZE_MB}M"     -t "1:0FC63DAF-8483-4772-8E79-3D69D8477DE4"     -c "1:ROOT"     -u "1:${ROOT_GUID}"     -n "2:0:+${TEMP_SIZE_MB}M"     -t "2:0FC63DAF-8483-4772-8E79-3D69D8477DE4"     -c "2:temp"
-
+echo "==> Extracting AVF partition payload files"
 sector_size="$(sfdisk -J "$DISK_IMG" | python3 -c 'import json,sys; print(json.load(sys.stdin)["partitiontable"]["sectorsize"])')"
-dd if="$DISK_IMG" of="$ROOT_PART" bs="$sector_size" skip=2048 seek=2048 count="$((ROOT_SIZE_MB * 1024 * 1024 / sector_size))" conv=notrunc status=none
+sfdisk -J "$DISK_IMG" | python3 -c '
+import json
+import sys
 
-echo "==> Extracting EFI partition"
-dd if="$DISK_IMG" of="$EFI_PART" bs="$sector_size" skip="$(( (ROOT_SIZE_MB + 1) * 2048 ))" count="$((EFI_SIZE_MB * 2048))" status=none
+data = json.load(sys.stdin)["partitiontable"]
+sector_size = data["sectorsize"]
+for partition in data["partitions"]:
+    name = partition.get("name", "")
+    start = int(partition["start"]) * sector_size
+    size = int(partition["size"]) * sector_size
+    if name == "ESP":
+        print(f"efi {start} {size}")
+    elif name == "archlinux":
+        print(f"root {start} {size}")
+' | while read -r label start size; do
+    case "$label" in
+        efi) dd if="$DISK_IMG" of="$EFI_PART" bs="$sector_size" skip="$((start / sector_size))" count="$((size / sector_size))" status=none ;;
+        root) dd if="$DISK_IMG" of="$ROOT_PART" bs="$sector_size" skip="$((start / sector_size))" count="$((size / sector_size))" status=none ;;
+    esac
+done
 
-cat > "$BUILD_DIR/partition-uuids.env" <<EOF2
-ROOT_PART_GUID="$ROOT_GUID"
-EOF2
+cat > "$BUILD_DIR/partition-uuids.env" <<EOF
+ROOT_PART_GUID="$(sfdisk --part-uuid "$DISK_IMG" 1)"
+EFI_PART_GUID="$(sfdisk --part-uuid "$DISK_IMG" 2)"
+EOF
 
-ls -lh "$EFI_PART" "$ROOT_PART" "$BUILD_DIR/partition-uuids.env"
+ls -lh "$DISK_IMG" "$EFI_PART" "$ROOT_PART" "$BUILD_DIR/partition-uuids.env"
