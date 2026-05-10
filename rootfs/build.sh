@@ -24,10 +24,10 @@ DROID_PASSWORD="${DROID_PASSWORD:-droid}"
 mkdir -p "$BUILD_DIR" "$CACHE_DIR" "$ANDROID_SERVICES_DIR"
 
 echo "==> Building rootfs helper image"
-docker build -t arch-avf-rootfs "$SCRIPT_DIR"
+podman build -t arch-avf-rootfs "$SCRIPT_DIR"
 
 echo "==> Creating Arch Linux ARM rootfs"
-docker run --rm -i --privileged \
+podman run --rm -i --privileged --platform linux/arm64 \
     -v "$BUILD_DIR:/build" \
     -v "$SCRIPT_DIR/packages.txt:/packages.txt:ro" \
     -v "$KERNEL_MODULES_DIR:/kernel_modules:ro" \
@@ -60,6 +60,7 @@ rm -f "$ROOTFS_DIR/etc/resolv.conf"
 install -Dm644 /etc/resolv.conf "$ROOTFS_DIR/etc/resolv.conf"
 # Docker chroots can confuse pacman's mount lookup for /var/cache/pacman/pkg.
 sed -i 's/^[[:space:]]*CheckSpace/#CheckSpace/' "$ROOTFS_DIR/etc/pacman.conf"
+sed -i "s/#DisableSandboxFilesystem/DisableSandboxFilesystem/; s/#DisableSandboxSyscalls/DisableSandboxSyscalls/" "$ROOTFS_DIR/etc/pacman.conf"
 cp /usr/bin/qemu-aarch64-static "$ROOTFS_DIR/usr/bin/"
 mountpoint -q "$ROOTFS_DIR/proc" || mount -t proc proc "$ROOTFS_DIR/proc"
 mountpoint -q "$ROOTFS_DIR/sys" || mount --rbind /sys "$ROOTFS_DIR/sys"
@@ -203,6 +204,8 @@ systemctl enable \
     forwarder_guest_launcher.service \
     shutdown_runner.service \
     ttyd.service \
+    ttyd_uds.service \
+    ttyd_vsock_bridge.service \
     boot-debug.service
 systemctl disable \
     avahi_ttyd.service \

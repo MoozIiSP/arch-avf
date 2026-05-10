@@ -31,3 +31,4 @@ zram-generator
 procps-ng
 man-db
 man-pages
+socat

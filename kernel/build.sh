@@ -18,10 +18,10 @@ APPLY_AVF_PATCHES="${APPLY_AVF_PATCHES:-auto}"
 mkdir -p "$BUILD_DIR"
 
 echo "==> Building kernel helper image"
-docker build -t arch-avf-kernel "$SCRIPT_DIR"
+podman build -t arch-avf-kernel "$SCRIPT_DIR"
 
 echo "==> Cross-compiling Linux $KERNEL_VERSION for arm64"
-docker run --rm -i \
+podman run --rm -i \
     -v "$BUILD_DIR:/output" \
     -v "$CONFIG_FRAGMENT:/config/kernel_fragment:ro" \
     -v "$DEBIAN_KERNEL_CONFIG:/config/debian_kernel_config:ro" \

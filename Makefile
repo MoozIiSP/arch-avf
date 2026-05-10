@@ -45,4 +45,4 @@ clean:
 	@echo "Removed $(BUILD_DIR)"
 
 distclean: clean
-	@docker image rm arch-avf-rootfs arch-avf-kernel 2>/dev/null || true
+	@podman image rm arch-avf-rootfs arch-avf-kernel 2>/dev/null || true

@@ -3,3 +3,4 @@ build/
 *.log
 *.img
 *.tar.gz
+orig/

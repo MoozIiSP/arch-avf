@@ -1,0 +1,13 @@
+[Unit]
+Description=TTYD Server (UDS Backend)
+
+[Service]
+Type=simple
+RuntimeDirectory=ttyd
+RuntimeDirectoryMode=0755
+ExecStart=/usr/bin/ttyd -i /run/ttyd/ttyd.sock -t disableLeaveAlert=true -W /bin/bash -c "exec su - droid"
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
