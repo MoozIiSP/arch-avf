@@ -29,6 +29,7 @@ copy_required "$BUILD_DIR/image/root_part" "$PAYLOAD_DIR/root_part"
 copy_required "$BUILD_DIR/image/efi_part" "$PAYLOAD_DIR/efi_part"
 
 . "$PARTITION_UUIDS"
+EFI_PART_GUID="${EFI_PART_GUID:-00000000-0000-0000-0000-000000000000}"
 export EFI_PART_GUID ROOT_PART_GUID
 python3 - "$PROJECT_DIR/config/vm_config.json" "$PAYLOAD_DIR/vm_config.json" <<'PY'
 import json

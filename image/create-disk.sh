@@ -102,9 +102,11 @@ echo "==> Building root_part as GPT disk (Google Debian compatible)"
 rm -f "$ROOT_PART"
 
 # Create GPT disk with just the ROOT partition
-truncate -s "$((ROOT_SIZE_MB + 2))M" "$ROOT_PART"
+# GPT with 2 partitions: vda1=ROOT (Arch), vda2=temp (for replace.sh stage 2)
+TEMP_SIZE_MB=256
+truncate -s "$((ROOT_SIZE_MB + TEMP_SIZE_MB + 4))M" "$ROOT_PART"
 ROOT_GUID="$(sfdisk --part-uuid "$DISK_IMG" 1)"
-sgdisk -o "$ROOT_PART"     -n "1:2048:+0"     -t "1:0FC63DAF-8483-4772-8E79-3D69D8477DE4"     -c "1:ROOT"     -u "1:${ROOT_GUID}"
+sgdisk -o "$ROOT_PART"     -n "1:2048:+${ROOT_SIZE_MB}M"     -t "1:0FC63DAF-8483-4772-8E79-3D69D8477DE4"     -c "1:ROOT"     -u "1:${ROOT_GUID}"     -n "2:0:+${TEMP_SIZE_MB}M"     -t "2:0FC63DAF-8483-4772-8E79-3D69D8477DE4"     -c "2:temp"
 
 sector_size="$(sfdisk -J "$DISK_IMG" | python3 -c 'import json,sys; print(json.load(sys.stdin)["partitiontable"]["sectorsize"])')"
 dd if="$DISK_IMG" of="$ROOT_PART" bs="$sector_size" skip=2048 seek=2048 count="$((ROOT_SIZE_MB * 1024 * 1024 / sector_size))" conv=notrunc status=none
