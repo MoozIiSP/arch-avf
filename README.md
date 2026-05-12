@@ -102,7 +102,6 @@ Tunable environment variables:
 
 ```bash
 KERNEL_VERSION=6.12.77 KERNEL_GIT_REF=android16-6.12.77_r00 make kernel
-KERNEL_GIT_REF=refs/changes/23/3894423/3 KERNEL_VERSION=6.12.60 make kernel
 ROOT_SIZE_MB=8192 make image
 ROOT_PASSWORD=secret DROID_PASSWORD=secret make rootfs
 PUSH_ROOT_PART=0 make deploy
@@ -113,13 +112,12 @@ DEPLOY_MODE=import-image TARGET_DIR=/sdcard/linux make deploy
 The default kernel source is Android common:
 
 ```text
-KERNEL_SOURCE=android_common
 KERNEL_GIT_REPO=https://android.googlesource.com/kernel/common
 KERNEL_GIT_REF=android16-6.12.77_r00
 KERNEL_BASE_CONFIG=android_avf
 ```
 
-`config/debian_kernel_config` is an Android/GKI-style arm64 config aligned from Google's Debian Terminal image rather than an upstream kernel.org defconfig. `KERNEL_SOURCE=tarball` is kept only as a rollback/debug path; it is not the production-compatible default.
+`config/debian_kernel_config` is an Android/GKI-style arm64 config aligned from Google's Debian Terminal image.
 
 ## Deploy
 

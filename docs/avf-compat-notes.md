@@ -32,17 +32,5 @@ KERNEL_BUILD_BACKEND=host make kernel
 
 GitHub Actions uses the host backend so it can build Android common kernel
 refs without depending on an `orig/` directory. The production kernel source is
-Android common, currently `android16-6.12.77_r00`; the previously working Google
-Debian reproduction point is `refs/changes/23/3894423/3` (`g54e1389bda83`).
-
-To roll back to the exact Google Debian kernel lineage for comparison:
-
-```sh
-KERNEL_VERSION=6.12.60 KERNEL_GIT_REF=refs/changes/23/3894423/3 make kernel
-```
-
-To roll all the way back to upstream kernel.org tarballs for investigation only:
-
-```sh
-KERNEL_SOURCE=tarball KERNEL_BASE_CONFIG=debian_avf make kernel
-```
+Android common, currently `android16-6.12.77_r00`. Legacy fallback source paths
+were removed so repository builds stay on the Android common branch line.
