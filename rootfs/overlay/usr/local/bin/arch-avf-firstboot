@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STATE_DIR=/var/lib/arch-avf
+MARKER="$STATE_DIR/firstboot.done"
+LOG=/var/log/arch-avf-firstboot.log
+MIRRORLIST=/etc/pacman.d/mirrorlist
+
+mkdir -p "$STATE_DIR"
+: >> "$LOG"
+if [ -w /dev/console ]; then
+    exec >> >(tee -a "$LOG" >/dev/console) 2>&1
+else
+    exec >> "$LOG" 2>&1
+fi
+
+log() {
+    printf 'arch-avf-firstboot: %s\n' "$*"
+}
+
+if [ -e "$MARKER" ]; then
+    log "already completed"
+    exit 0
+fi
+
+wait_for_network() {
+    local attempt
+    for attempt in $(seq 1 60); do
+        if getent hosts archlinuxarm.org >/dev/null 2>&1 || getent hosts github.com >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 2
+    done
+    return 1
+}
+
+enable_pacman_sandbox() {
+    if [ -f /etc/pacman.conf ]; then
+        sed -i -E \
+            -e 's/^[[:space:]]*DisableSandboxFilesystem[[:space:]]*$/#DisableSandboxFilesystem/' \
+            -e 's/^[[:space:]]*DisableSandboxSyscalls[[:space:]]*$/#DisableSandboxSyscalls/' \
+            /etc/pacman.conf
+    fi
+}
+
+update_mirrors() {
+    command -v rate-mirrors >/dev/null 2>&1 || {
+        log "rate-mirrors is missing"
+        return 1
+    }
+
+    local tmp
+    tmp="$(mktemp)"
+    if rate-mirrors --allow-root --save="$tmp" archarm; then
+        if grep -q '^Server[[:space:]]*=' "$tmp"; then
+            cp -f "$MIRRORLIST" "$MIRRORLIST.arch-avf-backup" 2>/dev/null || true
+            install -m 0644 "$tmp" "$MIRRORLIST"
+            rm -f "$tmp"
+            return 0
+        fi
+        log "rate-mirrors produced no pacman Server entries"
+    else
+        log "rate-mirrors failed"
+    fi
+    rm -f "$tmp"
+    return 1
+}
+
+log "waiting for network"
+wait_for_network
+
+log "enabling pacman sandbox"
+enable_pacman_sandbox
+
+log "rating Arch Linux ARM mirrors"
+update_mirrors
+
+log "refreshing pacman databases"
+pacman -Syy --noconfirm
+
+touch "$MARKER"
+log "completed"

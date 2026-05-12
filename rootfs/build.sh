@@ -17,6 +17,9 @@ ALARM_TARBALL_URL="${ALARM_TARBALL_URL:-http://os.archlinuxarm.org/os/ArchLinuxA
 ROOT_PASSWORD="${ROOT_PASSWORD:-root}"
 DROID_USER="${DROID_USER:-droid}"
 DROID_PASSWORD="${DROID_PASSWORD:-droid}"
+RATE_MIRRORS_VERSION="${RATE_MIRRORS_VERSION:-v0.28.3}"
+RATE_MIRRORS_SHA256="${RATE_MIRRORS_SHA256:-191acbe1c52a966a342cd9c6ae32841a11e01fe4c612b8d72267c5f97b1d455c}"
+RATE_MIRRORS_URL="${RATE_MIRRORS_URL:-https://github.com/westandskif/rate-mirrors/releases/download/$RATE_MIRRORS_VERSION/rate-mirrors-$RATE_MIRRORS_VERSION-aarch64-unknown-linux-musl.tar.gz}"
 
 [ -d "$KERNEL_MODULES_DIR/lib/modules" ] || { echo "Missing kernel modules: $KERNEL_MODULES_DIR/lib/modules. Run make kernel first." >&2; exit 1; }
 [ -f "$KERNEL_RELEASE_FILE" ] || { echo "Missing kernel release file: $KERNEL_RELEASE_FILE. Run make kernel first." >&2; exit 1; }
@@ -38,12 +41,15 @@ podman run --rm -i --privileged --platform linux/arm64 \
     -e ROOT_PASSWORD="$ROOT_PASSWORD" \
     -e DROID_USER="$DROID_USER" \
     -e DROID_PASSWORD="$DROID_PASSWORD" \
+    -e RATE_MIRRORS_URL="$RATE_MIRRORS_URL" \
+    -e RATE_MIRRORS_SHA256="$RATE_MIRRORS_SHA256" \
     arch-avf-rootfs bash -s <<'SCRIPT'
 set -euo pipefail
 
 ROOTFS_DIR=/build/rootfs
 CACHE_DIR=/build/cache
 TARBALL="$CACHE_DIR/ArchLinuxARM-aarch64-latest.tar.gz"
+RATE_MIRRORS_TARBALL="$CACHE_DIR/rate-mirrors-aarch64.tar.gz"
 PACKAGES="$(tr '\n' ' ' < /packages.txt)"
 KERNEL_RELEASE="$(cat /kernel_release)"
 
@@ -53,6 +59,10 @@ mkdir -p "$ROOTFS_DIR" "$CACHE_DIR"
 if [ ! -s "$TARBALL" ]; then
     curl -fL "$ALARM_TARBALL_URL" -o "$TARBALL"
 fi
+if [ ! -s "$RATE_MIRRORS_TARBALL" ] || ! printf '%s  %s\n' "$RATE_MIRRORS_SHA256" "$RATE_MIRRORS_TARBALL" | sha256sum -c - >/dev/null 2>&1; then
+    curl -fL "$RATE_MIRRORS_URL" -o "$RATE_MIRRORS_TARBALL"
+fi
+printf '%s  %s\n' "$RATE_MIRRORS_SHA256" "$RATE_MIRRORS_TARBALL" | sha256sum -c -
 
 bsdtar -xpf "$TARBALL" -C "$ROOTFS_DIR"
 
@@ -129,6 +139,11 @@ chroot "$ROOTFS_DIR" depmod "$KERNEL_RELEASE"
 rm -rf "$ROOTFS_DIR/var/cache/pacman/pkg/"*
 
 cp -a /overlay/. "$ROOTFS_DIR/"
+rate_mirrors_extract="$(mktemp -d)"
+bsdtar -xpf "$RATE_MIRRORS_TARBALL" -C "$rate_mirrors_extract"
+install -Dm755 "$rate_mirrors_extract"/*/rate_mirrors "$ROOTFS_DIR/usr/local/bin/rate-mirrors"
+ln -sf rate-mirrors "$ROOTFS_DIR/usr/local/bin/rate_mirrors"
+rm -rf "$rate_mirrors_extract"
 chmod 0755 "$ROOTFS_DIR/usr/local/lib/avf/make-ttyd-cert"
 chmod 0755 "$ROOTFS_DIR/usr/local/lib/avf/start-ttyd"
 chmod 0755 "$ROOTFS_DIR/usr/local/lib/avf/boot-debug"
@@ -137,6 +152,7 @@ chmod 0755 "$ROOTFS_DIR/usr/local/bin/enable_display"
 chmod 0755 "$ROOTFS_DIR/usr/local/bin/avf-debug-init"
 chmod 0755 "$ROOTFS_DIR/usr/local/bin/avf-debug-dump"
 chmod 0755 "$ROOTFS_DIR/usr/local/bin/avf-debug-export"
+chmod 0755 "$ROOTFS_DIR/usr/local/bin/arch-avf-firstboot"
 chmod 0755 "$ROOTFS_DIR/usr/lib/initcpio/install/avf-debug"
 chmod 0755 "$ROOTFS_DIR/usr/lib/initcpio/hooks/avf-debug"
 mkdir -p "$ROOTFS_DIR/etc/systemd/system-generators"
@@ -230,6 +246,7 @@ systemctl enable \
     boot-debug.service \
     avf-debug-dump.service \
     avf-debug-export.service \
+    arch-avf-firstboot.service \
     systemd-timesyncd.service
 systemctl disable \
     avahi_ttyd.service \

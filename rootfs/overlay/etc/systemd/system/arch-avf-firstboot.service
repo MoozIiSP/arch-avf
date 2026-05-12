@@ -1,0 +1,13 @@
+[Unit]
+Description=Arch AVF first boot pacman setup
+Wants=network-online.target
+After=NetworkManager.service systemd-resolved.service network-online.target
+ConditionPathExists=!/var/lib/arch-avf/firstboot.done
+
+[Service]
+Type=oneshot
+TimeoutStartSec=5min
+ExecStart=/usr/local/bin/arch-avf-firstboot
+
+[Install]
+WantedBy=multi-user.target

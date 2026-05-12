@@ -171,6 +171,11 @@ Default credentials are `root` / `root`. Change `ROOT_PASSWORD` before building 
 
 The default normal user is `droid` / `droid`; change `DROID_PASSWORD` before building if you plan to keep the image around.
 
+On the first Arch boot after replace, `arch-avf-firstboot.service` ranks Arch
+Linux ARM mirrors with `rate-mirrors archarm`, refreshes pacman databases, and
+re-enables pacman's sandbox options that were disabled only for the build
+chroot.
+
 ## Repository Layout
 
 ```text
