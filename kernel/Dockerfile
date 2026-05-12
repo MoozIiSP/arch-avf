@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc-aarch64-linux-gnu \
         git \
         kmod \
+        libdw-dev \
         libelf-dev \
         libssl-dev \
         lld \
@@ -20,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         patch \
         python3 \
         xz-utils \
+        zstd \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /work

@@ -34,13 +34,15 @@ jobs:
             fdisk \
             flex \
             kmod \
+            libdw-dev \
             libelf-dev \
             libssl-dev \
             lld \
             llvm \
             patch \
             qemu-user-static \
-            systemd-container
+            systemd-container \
+            zstd
 
       - name: Build kernel
         run: KERNEL_BUILD_BACKEND=host make kernel
