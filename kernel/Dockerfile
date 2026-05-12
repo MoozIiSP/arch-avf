@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         bison \
         build-essential \
         ca-certificates \
+        clang \
         cpio \
         curl \
         flex \
@@ -13,6 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         kmod \
         libelf-dev \
         libssl-dev \
+        lld \
+        llvm \
         make \
         patch \
         python3 \

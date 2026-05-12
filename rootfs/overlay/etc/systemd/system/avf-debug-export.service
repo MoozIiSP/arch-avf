@@ -1,0 +1,13 @@
+[Unit]
+Description=Export Android AVF guest diagnostics to shared storage
+After=basic.target
+Wants=mnt-shared.automount
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/avf-debug-export
+Restart=no
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

@@ -10,6 +10,8 @@ PARTITION_UUIDS="$IMAGE_DIR/partition-uuids.env"
 CIDATA_IMAGE="$BUILD_DIR/cidata.iso"
 ANDROID_IMAGE="$BUILD_DIR/images.tar.gz"
 REPLACE_IMAGE="$BUILD_DIR/arch-avf-replace.tar.gz"
+PACKAGE_IMPORT="${PACKAGE_IMPORT:-1}"
+PACKAGE_REPLACE="${PACKAGE_REPLACE:-1}"
 
 rm -rf "$PAYLOAD_DIR"
 mkdir -p "$PAYLOAD_DIR"
@@ -26,11 +28,12 @@ copy_required "$PARTITION_UUIDS" "$PAYLOAD_DIR/partition-uuids.env"
 copy_required "$BUILD_DIR/kernel/vmlinuz" "$PAYLOAD_DIR/vmlinuz"
 copy_required "$BUILD_DIR/initrd.img" "$PAYLOAD_DIR/initrd.img"
 copy_required "$BUILD_DIR/image/root_part" "$PAYLOAD_DIR/root_part"
-copy_required "$BUILD_DIR/image/efi_part" "$PAYLOAD_DIR/efi_part"
+if [ -s "$BUILD_DIR/kernel/kernel.source" ]; then
+    copy_required "$BUILD_DIR/kernel/kernel.source" "$PAYLOAD_DIR/kernel.source"
+fi
 
 . "$PARTITION_UUIDS"
-EFI_PART_GUID="${EFI_PART_GUID:-00000000-0000-0000-0000-000000000000}"
-export EFI_PART_GUID ROOT_PART_GUID
+export ROOT_PART_GUID
 python3 - "$PROJECT_DIR/config/vm_config.json" "$PAYLOAD_DIR/vm_config.json" <<'PY'
 import json
 import os
@@ -40,7 +43,6 @@ import sys
 src = pathlib.Path(sys.argv[1])
 dest = pathlib.Path(sys.argv[2])
 text = src.read_text()
-text = text.replace("{efi_part_guid}", os.environ["EFI_PART_GUID"])
 text = text.replace("{root_part_guid}", os.environ["ROOT_PART_GUID"])
 json.loads(text)
 dest.write_text(text + "\n")
@@ -79,47 +81,60 @@ if [ "$need_cidata" = 1 ] && [ -s "$CIDATA_IMAGE" ]; then
     copy_required "$CIDATA_IMAGE" "$PAYLOAD_DIR/cidata.iso"
 fi
 
-if [ "$need_cidata" = 0 ] || [ -s "$PAYLOAD_DIR/cidata.iso" ]; then
+if [ "$PACKAGE_IMPORT" != "0" ] && { [ "$need_cidata" = 0 ] || [ -s "$PAYLOAD_DIR/cidata.iso" ]; }; then
     echo "==> Packaging Android Terminal import image"
     import_contents=(
         build_id
         root_part
-        efi_part
         vm_config.json
         vmlinuz
         initrd.img
     )
+    if [ -s "$PAYLOAD_DIR/kernel.source" ]; then
+        import_contents+=(kernel.source)
+    fi
     if [ -s "$PAYLOAD_DIR/cidata.iso" ]; then
         import_contents+=(cidata.iso)
     fi
     tar -C "$PAYLOAD_DIR" -czf "$ANDROID_IMAGE" "${import_contents[@]}"
     sha256sum "$ANDROID_IMAGE" > "$ANDROID_IMAGE.sha256"
-else
+elif [ "$PACKAGE_IMPORT" != "0" ]; then
     echo "==> Skipping Android Terminal import image: vm_config.json requires cidata.iso, but $CIDATA_IMAGE is absent"
     rm -f "$ANDROID_IMAGE" "$ANDROID_IMAGE.sha256"
+else
+    echo "==> Skipping Android Terminal import image packaging"
 fi
 
-echo "==> Packaging production replace image"
 cp "$SCRIPT_DIR/replace.sh" "$PAYLOAD_DIR/replace.sh"
 chmod 0755 "$PAYLOAD_DIR/replace.sh"
-replace_contents=(
-    build_id
-    root_part
-    efi_part
-    vm_config.json
-    vmlinuz
-    initrd.img
-    replace.sh
-)
-if [ -s "$PAYLOAD_DIR/cidata.iso" ]; then
-    replace_contents+=(cidata.iso)
+
+if [ "$PACKAGE_REPLACE" != "0" ]; then
+    echo "==> Packaging production replace image"
+    replace_contents=(
+        build_id
+        root_part
+        vm_config.json
+        vmlinuz
+        initrd.img
+        replace.sh
+    )
+    if [ -s "$PAYLOAD_DIR/kernel.source" ]; then
+        replace_contents+=(kernel.source)
+    fi
+    if [ -s "$PAYLOAD_DIR/cidata.iso" ]; then
+        replace_contents+=(cidata.iso)
+    fi
+    tar -C "$PAYLOAD_DIR" -czf "$REPLACE_IMAGE" "${replace_contents[@]}"
+    sha256sum "$REPLACE_IMAGE" > "$REPLACE_IMAGE.sha256"
+else
+    echo "==> Skipping production replace image packaging"
 fi
-tar -C "$PAYLOAD_DIR" -czf "$REPLACE_IMAGE" "${replace_contents[@]}"
-sha256sum "$REPLACE_IMAGE" > "$REPLACE_IMAGE.sha256"
 
 echo "==> Payload contents"
 ls -lh "$PAYLOAD_DIR"
-if [ -f "$ANDROID_IMAGE" ]; then
+if [ "$PACKAGE_IMPORT" != "0" ] && [ -f "$ANDROID_IMAGE" ]; then
     ls -lh "$ANDROID_IMAGE" "$ANDROID_IMAGE.sha256"
 fi
-ls -lh "$REPLACE_IMAGE" "$REPLACE_IMAGE.sha256"
+if [ "$PACKAGE_REPLACE" != "0" ] && [ -f "$REPLACE_IMAGE" ]; then
+    ls -lh "$REPLACE_IMAGE" "$REPLACE_IMAGE.sha256"
+fi

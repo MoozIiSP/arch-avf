@@ -22,18 +22,16 @@ The replace archive produced by this repo contains:
 vm_config.json
 build_id
 root_part
-efi_part
 vmlinuz
 initrd.img
+kernel.source
 replace.sh
 ```
 
 `vm_config.json` intentionally follows the Android 16 Debian Terminal layout for
 the supported `replace` flow. The active boot path is direct kernel + initrd +
 `root_part`, plus the existing Terminal-managed `cidata.iso` already present on
-the device after the stock Debian install. `efi_part` is still shipped and
-refreshed during replace so the on-device payload stays aligned with Debian's
-file set.
+the device after the stock Debian install.
 
 `build_id` must use the exact `target-id-date` shape accepted by the Android 16 Terminal APK:
 
@@ -44,7 +42,7 @@ file set.
 Example:
 
 ```text
-archlinux/aarch64/2026.05.08-6.12.60-arch-avf-1778203200-Thu May 08 01:20:00 UTC 2026
+archlinux/aarch64/2026.05.12-6.12.77-4k-gbd720db56e2e-1778203200-Tue May 12 12:00:00 UTC 2026
 ```
 
 The checked-in config uses:
@@ -64,10 +62,10 @@ Build host:
 - Linux with loop-mount support
 - Docker
 - `sudo`
-- `sfdisk`, `mkfs.ext4`, `mkfs.vfat`, `tune2fs`, `tar`, `python3`, `sha256sum`
+- `clang`, `lld`, `llvm`, `git`, `sfdisk`, `mkfs.ext4`, `tar`, `python3`, `sha256sum`
 - Android Platform Tools for deployment with `adb`
 
-The rootfs and kernel builds run inside Docker. The image assembly step uses host loop mounts, so it must run on Linux. GitHub Actions uses `ubuntu-24.04-arm`.
+The rootfs build runs inside Docker. The default kernel build follows Google's Android common kernel branch and can run either inside Docker or directly on the host; GitHub Actions uses the host backend on `ubuntu-24.04-arm`. The image assembly step uses host loop mounts, so it must run on Linux.
 
 ## Build
 
@@ -80,9 +78,10 @@ Useful targets:
 ```bash
 make kernel            # Cross-compile aarch64 Linux kernel and modules
 make rootfs            # Build Arch Linux ARM rootfs and initrd.img
-make image             # Create root_part, efi_part, payload dir, and the replace package
+make image             # Create root_part, payload dir, and the replace package
+make payload           # Refresh build/payload only, without packaging tarballs
 make android-services  # Build Android guest service binaries from AOSP
-make deploy            # Push debug import image when cidata.iso is available
+make deploy            # Push existing payload files to /sdcard/Download/image
 make clean             # Remove build outputs
 ```
 
@@ -92,10 +91,8 @@ Build outputs:
 build/rootfs/rootfs.tar.gz
 build/initrd.img
 build/kernel/vmlinuz
-build/kernel/BOOTAA64.EFI
 build/kernel/modules/
 build/image/root_part
-build/image/efi_part
 build/payload/
 build/arch-avf-replace.tar.gz
 build/arch-avf-replace.tar.gz.sha256
@@ -104,16 +101,25 @@ build/arch-avf-replace.tar.gz.sha256
 Tunable environment variables:
 
 ```bash
-KERNEL_VERSION=6.12.60 make kernel
-ROOT_SIZE_MB=8192 EFI_SIZE_MB=100 make image
+KERNEL_VERSION=6.12.77 KERNEL_GIT_REF=android16-6.12.77_r00 make kernel
+KERNEL_GIT_REF=refs/changes/23/3894423/3 KERNEL_VERSION=6.12.60 make kernel
+ROOT_SIZE_MB=8192 make image
 ROOT_PASSWORD=secret DROID_PASSWORD=secret make rootfs
-TARGET_DIR=/sdcard/linux make deploy
+PUSH_ROOT_PART=0 make deploy
+PACKAGE_REPLACE=0 PACKAGE_IMPORT=0 bash image/assemble.sh
+DEPLOY_MODE=import-image TARGET_DIR=/sdcard/linux make deploy
 ```
 
-`APPLY_AVF_PATCHES=auto` is the default. Android's `android-16.0.0_r3`
-kernel patch set is only applied for Linux 6.1.x builds; the default Linux
-6.12.x build follows the Terminal Debian kernel generation shape while using
-upstream 6.12 virtio support.
+The default kernel source is Android common:
+
+```text
+KERNEL_SOURCE=android_common
+KERNEL_GIT_REPO=https://android.googlesource.com/kernel/common
+KERNEL_GIT_REF=android16-6.12.77_r00
+KERNEL_BASE_CONFIG=android_avf
+```
+
+`config/debian_kernel_config` is an Android/GKI-style arm64 config aligned from Google's Debian Terminal image rather than an upstream kernel.org defconfig. `KERNEL_SOURCE=tarball` is kept only as a rollback/debug path; it is not the production-compatible default.
 
 ## Deploy
 
@@ -125,7 +131,13 @@ Enable the Android Terminal app on an Android 16+ debuggable/userdebug device, c
 make deploy
 ```
 
-If you also provide a matching `build/cidata.iso`, the debug import image is pushed to:
+If you also provide a matching `build/cidata.iso`, the debug import image can be pushed with:
+
+```bash
+DEPLOY_MODE=import-image TARGET_DIR=/sdcard/linux make deploy
+```
+
+The debug import image is pushed to:
 
 ```text
 /sdcard/linux/images.tar.gz
@@ -137,12 +149,12 @@ Production/user builds do not support installing custom images from `/sdcard/lin
 
 ### Production Android builds
 
-On normal production Android builds, use the replace package:
+On normal production Android builds, use the replace payload:
 
 1. Install Google's Debian image from the Terminal app once.
-2. Download `archlinux-avf-aarch64-replace.tar.gz` from the GitHub release.
-3. Extract it on the phone so the files are under `Download/image/`.
-4. Open Terminal and run:
+2. Run `make payload && make deploy` to push `build/payload/` files directly to `Download/image/`.
+   If only kernel/initrd/config changed and the existing phone `root_part` is already current, use `PUSH_ROOT_PART=0 make deploy`.
+3. Open Terminal and run:
 
 ```bash
 bash /mnt/shared/Download/image/replace.sh

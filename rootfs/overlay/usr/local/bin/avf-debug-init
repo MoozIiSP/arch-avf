@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/bin
+LOCAL_LOG=/var/log/arch-avf-debug-init.log
+SHARED_LOG=/mnt/shared/arch-avf-debug-init.log
+
+mkdir -p /proc /sys /dev /run /var/log /mnt/shared /mnt/internal
+mountpoint -q /proc || mount -t proc proc /proc 2>/dev/null || true
+mountpoint -q /sys || mount -t sysfs sysfs /sys 2>/dev/null || true
+mountpoint -q /dev || mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+
+log() {
+    printf '%s\n' "$*" >> "$LOCAL_LOG"
+    if mountpoint -q /mnt/shared; then
+        printf '%s\n' "$*" >> "$SHARED_LOG" 2>/dev/null || true
+    fi
+    printf '%s\n' "avf-debug-init: $*" > /dev/console 2>/dev/null || true
+}
+
+run() {
+    {
+        printf '\n$ %s\n' "$*"
+        "$@"
+    } >> "$LOCAL_LOG" 2>&1 || true
+}
+
+: > "$LOCAL_LOG"
+log "started $(date -Is 2>/dev/null || date)"
+run cat /proc/cmdline
+run cat /etc/fstab
+run ls -l /dev
+run ls -l /dev/disk/by-partuuid
+run mount
+
+modprobe virtiofs 2>> "$LOCAL_LOG" || true
+modprobe fuse 2>> "$LOCAL_LOG" || true
+
+for attempt in $(seq 1 30); do
+    if ! mountpoint -q /mnt/shared; then
+        mount -t virtiofs android /mnt/shared >> "$LOCAL_LOG" 2>&1 || true
+    fi
+    if mountpoint -q /mnt/shared && { : >> "$SHARED_LOG"; } 2>/dev/null; then
+        log "shared storage mounted on attempt $attempt"
+        cp -f "$LOCAL_LOG" "$SHARED_LOG" 2>/dev/null || true
+        break
+    fi
+    log "shared storage not ready on attempt $attempt"
+    sleep 1
+done
+
+log "exec systemd"
+exec /usr/lib/systemd/systemd

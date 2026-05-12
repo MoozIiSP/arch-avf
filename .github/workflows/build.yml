@@ -26,14 +26,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             adb \
+            bc \
+            bison \
+            clang \
             dosfstools \
             e2fsprogs \
             fdisk \
+            flex \
+            kmod \
+            libelf-dev \
+            libssl-dev \
+            lld \
+            llvm \
+            patch \
             qemu-user-static \
             systemd-container
 
       - name: Build kernel
-        run: make kernel
+        run: KERNEL_BUILD_BACKEND=host make kernel
 
       - name: Build rootfs
         run: make rootfs
@@ -59,6 +69,6 @@ jobs:
           body: |
             Arch Linux ARM image for Android 16 AVF Terminal app.
 
-            This release publishes the production `replace` package only.
+            This release publishes the production `replace` package only. The kernel is built from Android common kernel `android16-6.12.77_r00` by default.
 
             Production/user builds: install Google's Debian Terminal image first, extract `archlinux-avf-aarch64-replace.tar.gz` to `Download/image`, then run `bash /mnt/shared/Download/image/replace.sh` inside Terminal. Terminal will reboot; reopen it and let the script finish the second stage.

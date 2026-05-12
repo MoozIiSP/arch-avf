@@ -1,0 +1,48 @@
+#!/usr/bin/ash
+
+AVF_DEBUG_LOG=/run/arch-avf-initramfs.log
+
+avf_msg() {
+    printf '%s\n' "avf-debug: $*" >> "$AVF_DEBUG_LOG"
+    printf '%s\n' "avf-debug: $*" > /dev/console
+}
+
+avf_run() {
+    {
+        printf '\n$ %s\n' "$*"
+        "$@"
+    } >> "$AVF_DEBUG_LOG" 2>&1
+}
+
+avf_dump_common() {
+    avf_msg "$1"
+    avf_run cat /proc/cmdline
+    avf_run cat /proc/partitions
+    avf_run ls -l /dev
+    avf_run ls -l /dev/disk/by-partuuid
+    avf_run cat /proc/modules
+}
+
+run_hook() {
+    mkdir -p /run
+    : > "$AVF_DEBUG_LOG"
+    avf_dump_common "initramfs run_hook"
+}
+
+run_latehook() {
+    avf_msg "initramfs run_latehook"
+    avf_run mount
+    avf_run ls -l /new_root
+    avf_run cat /new_root/etc/fstab
+
+    if [ -d /new_root ]; then
+        mkdir -p /new_root/var/log
+        cp "$AVF_DEBUG_LOG" /new_root/var/log/arch-avf-initramfs.log 2>/dev/null || true
+    fi
+
+    mkdir -p /mnt/shared
+    if mount -t virtiofs android /mnt/shared >> "$AVF_DEBUG_LOG" 2>&1; then
+        cp "$AVF_DEBUG_LOG" /mnt/shared/arch-avf-initramfs.log 2>/dev/null || true
+        umount /mnt/shared >> "$AVF_DEBUG_LOG" 2>&1 || true
+    fi
+}

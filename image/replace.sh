@@ -7,14 +7,12 @@ if [ -e /sdcard ]; then
   exit 2
 fi
 
-IMG_LOC=/mnt/shared/image
-if [ -e /mnt/shared/Download/image ]; then
-  IMG_LOC=/mnt/shared/Download/image
-fi
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+IMG_LOC="${IMG_LOC:-$(dirname "$SCRIPT_PATH")}"
 VM_LOC=/mnt/internal/linux
 LOGFILE=/mnt/shared/arch-avf.log
 STEP_MARKER="$HOME/.arch-avf-step-2"
-SELF="$(readlink -f "$0")"
+SELF="$IMG_LOC/replace.sh"
 
 : >> "$LOGFILE"
 
@@ -34,13 +32,15 @@ require_file() {
 }
 
 require_file "$IMG_LOC/root_part"
-require_file "$IMG_LOC/efi_part"
 require_file "$IMG_LOC/vm_config.json"
 require_file "$IMG_LOC/build_id"
 require_file "$IMG_LOC/vmlinuz"
 require_file "$IMG_LOC/initrd.img"
 
 echo "arch-avf replace running, VM_LOC=$VM_LOC, IMG_LOC=$IMG_LOC"
+if [ "$IMG_LOC" != "/mnt/shared/Download/image" ]; then
+  echo "warning: replace payload is running from $IMG_LOC; expected /mnt/shared/Download/image" >&2
+fi
 
 step_1() {
   echo "arch-avf replace step 1: add temporary install partition"
@@ -120,14 +120,11 @@ step_2() {
   sudo umount "$arch_mnt"
   rmdir "$arch_mnt"
 
-  cp "$IMG_LOC/efi_part" .
   sudo umount /boot/efi || true
   sudo umount /kernel_extras || true
-  sudo rm -f "$VM_LOC/efi_part" "$VM_LOC/kernel_extras" "$VM_LOC/vmlinuz" "$VM_LOC/initrd.img"
+  sudo rm -f "$VM_LOC/kernel_extras" "$VM_LOC/vmlinuz" "$VM_LOC/initrd.img"
   sync
   sleep 3
-  sudo dd if=efi_part bs=1M oflag=direct "of=$VM_LOC/efi_part"
-  sync
 
   cp "$IMG_LOC/vm_config.json" .
   sudo cp vm_config.json "$VM_LOC/vm_config.json"

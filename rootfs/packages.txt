@@ -14,7 +14,6 @@ dhcpcd
 iproute2
 avahi
 nss-mdns
-bcc-libbpf-tools
 ttyd
 nftables
 mesa
@@ -27,7 +26,6 @@ weston
 libdrm
 seatd
 pulseaudio
-zram-generator
 procps-ng
 man-db
 man-pages

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+LOCAL_LOG=/var/log/arch-avf-debug-export.log
+SHARED_DIR=/mnt/shared
+
+mkdir -p /var/log "$SHARED_DIR"
+exec >> "$LOCAL_LOG" 2>&1
+
+echo "arch-avf debug export started: $(date -Is 2>/dev/null || date)"
+
+for attempt in $(seq 1 120); do
+    echo "attempt $attempt: $(date -Is 2>/dev/null || date)"
+
+    if ! mountpoint -q "$SHARED_DIR"; then
+        mount -t virtiofs android "$SHARED_DIR" || true
+    fi
+
+    if mountpoint -q "$SHARED_DIR" && { : >> "$SHARED_DIR/arch-avf-debug-export.log"; } 2>/dev/null; then
+        echo "shared storage is writable"
+        /usr/local/bin/avf-debug-dump || true
+        cp -f /var/log/arch-avf-guest-debug.log "$SHARED_DIR/arch-avf-guest-debug.log" 2>/dev/null || true
+        cp -f /var/log/arch-avf-initramfs.log "$SHARED_DIR/arch-avf-initramfs.log" 2>/dev/null || true
+        cp -f "$LOCAL_LOG" "$SHARED_DIR/arch-avf-debug-export.log" 2>/dev/null || true
+        exit 0
+    fi
+
+    sleep 5
+done
+
+echo "shared storage never became writable"
+exit 0

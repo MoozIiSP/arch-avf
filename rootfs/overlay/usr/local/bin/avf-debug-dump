@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+LOG=/mnt/shared/arch-avf-guest-debug.log
+FALLBACK=/var/log/arch-avf-guest-debug.log
+
+mkdir -p /mnt/shared /mnt/internal /var/log
+
+if ! mountpoint -q /mnt/shared; then
+    mount -t virtiofs android /mnt/shared 2>/dev/null || true
+fi
+
+if ! mountpoint -q /mnt/shared || ! { : >> "$LOG"; } 2>/dev/null; then
+    LOG="$FALLBACK"
+fi
+
+exec >> "$LOG" 2>&1
+
+section() {
+    printf '\n===== %s =====\n' "$1"
+}
+
+run() {
+    printf '\n$ %s\n' "$*"
+    "$@" || true
+}
+
+section "arch-avf guest debug $(date -Is 2>/dev/null || date)"
+run cat /proc/cmdline
+run uname -a
+run cat /etc/os-release
+run cat /etc/fstab
+
+section "block devices and mounts"
+run lsblk -o NAME,MAJ:MIN,SIZE,FSTYPE,PARTUUID,UUID,MOUNTPOINTS
+run findmnt -R /
+run findmnt /mnt/shared
+run findmnt /mnt/internal
+run mount
+
+section "network"
+run ip addr
+run ip route
+run ss -lntup
+
+section "systemd status"
+run systemctl --no-pager --failed
+run systemctl --no-pager status sshd.service sshdgenkeys.service systemd-networkd.service systemd-resolved.service
+run systemctl --no-pager status mnt-shared.mount mnt-shared.automount mnt-internal.mount mnt-internal.automount
+run systemctl --no-pager status ttyd.service ttyd_uds.service ttyd_vsock_bridge.service avahi_ttyd.service
+run systemctl --no-pager status forwarder_guest_launcher.service storage_balloon_agent.service shutdown_runner.service attach-cidata.service
+
+section "recent journal"
+run journalctl -b --no-pager -n 500
+
+section "kernel ring buffer"
+run dmesg --color=never
+
+section "debug dump complete"

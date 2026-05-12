@@ -1,0 +1,13 @@
+[Unit]
+Description=Dump Android AVF guest boot diagnostics
+DefaultDependencies=no
+After=systemd-journald.service
+Before=sysinit.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/avf-debug-dump
+TimeoutStartSec=15
+
+[Install]
+WantedBy=sysinit.target

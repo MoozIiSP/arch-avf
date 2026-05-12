@@ -1,0 +1,12 @@
+#!/bin/bash
+
+build() {
+    add_runscript
+}
+
+help() {
+    cat <<'HELPEOF'
+Writes early AVF boot diagnostics from initramfs to the console, the target
+root filesystem, and the Android shared virtiofs mount when available.
+HELPEOF
+}

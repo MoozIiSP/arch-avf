@@ -133,6 +133,26 @@ chmod 0755 "$ROOTFS_DIR/usr/local/lib/avf/make-ttyd-cert"
 chmod 0755 "$ROOTFS_DIR/usr/local/lib/avf/start-ttyd"
 chmod 0755 "$ROOTFS_DIR/usr/local/lib/avf/boot-debug"
 chmod 0755 "$ROOTFS_DIR/usr/local/bin/enable_display"
+[ -e "$ROOTFS_DIR/usr/local/bin/enable_gfxstream" ] && chmod 0755 "$ROOTFS_DIR/usr/local/bin/enable_gfxstream"
+chmod 0755 "$ROOTFS_DIR/usr/local/bin/avf-debug-init"
+chmod 0755 "$ROOTFS_DIR/usr/local/bin/avf-debug-dump"
+chmod 0755 "$ROOTFS_DIR/usr/local/bin/avf-debug-export"
+chmod 0755 "$ROOTFS_DIR/usr/lib/initcpio/install/avf-debug"
+chmod 0755 "$ROOTFS_DIR/usr/lib/initcpio/hooks/avf-debug"
+mkdir -p "$ROOTFS_DIR/etc/systemd/system-generators"
+ln -sf /dev/null "$ROOTFS_DIR/etc/systemd/system-generators/systemd-gpt-auto-generator"
+
+# AVF compatibility workaround:
+# Arch userland currently hits SIGILL in systemd's optional libbpf path and in
+# zram-generator under Android AVF. Keep these disabled until the CPU/userspace
+# compatibility issue is identified. See docs/avf-compat-notes.md.
+rm -f "$ROOTFS_DIR/usr/lib/libbpf.so" \
+    "$ROOTFS_DIR/usr/lib/libbpf.so.0" \
+    "$ROOTFS_DIR/usr/lib/libbpf.so.1" \
+    "$ROOTFS_DIR/usr/lib/libbpf.so."*
+rm -f "$ROOTFS_DIR/usr/lib/systemd/system-generators/zram-generator" \
+    "$ROOTFS_DIR/etc/systemd/zram-generator.conf"
+
 find "$ROOTFS_DIR/etc/systemd/system" -type f -name '*.service' -exec sed -i "s/@DROID_USER@/$DROID_USER/g" {} +
 sed -i "s/@DROID_USER@/$DROID_USER/g" "$ROOTFS_DIR/usr/local/lib/avf/start-ttyd"
 mkdir -p "$ROOTFS_DIR/usr/lib/avf"
@@ -143,9 +163,10 @@ for binary in forwarder_guest forwarder_guest_launcher storage_balloon_agent shu
 done
 
 cat > "$ROOTFS_DIR/etc/fstab" <<'EOF'
-LABEL=archlinux / ext4 rw,noatime 0 1
-LABEL=ESP /boot vfat rw,noatime,nofail 0 2
+LABEL=archlinux / ext4 rw,discard,errors=remount-ro,x-systemd.growfs 0 1
+# /boot/efi is intentionally left unmounted; Android Terminal boots this payload via vm_config.json kernel/initrd.
 EOF
+mkdir -p "$ROOTFS_DIR/boot/efi"
 
 install -d "$ROOTFS_DIR/etc/ssh/sshd_config.d" "$ROOTFS_DIR/etc/sudoers.d"
 cat > "$ROOTFS_DIR/etc/ssh/sshd_config.d/10-avf.conf" <<'EOF'
@@ -183,7 +204,7 @@ cat > "$ROOTFS_DIR/etc/mkinitcpio.conf" <<'EOF'
 MODULES=()
 BINARIES=()
 FILES=()
-HOOKS=(base udev block filesystems fsck)
+HOOKS=(base udev block avf-debug filesystems fsck)
 EOF
 
 chroot "$ROOTFS_DIR" /bin/bash -eux <<CHROOT
@@ -206,7 +227,10 @@ systemctl enable \
     ttyd.service \
     ttyd_uds.service \
     ttyd_vsock_bridge.service \
-    boot-debug.service
+    boot-debug.service \
+    avf-debug-dump.service \
+    avf-debug-export.service \
+    systemd-timesyncd.service
 systemctl disable \
     avahi_ttyd.service \
     systemd-networkd.service \
