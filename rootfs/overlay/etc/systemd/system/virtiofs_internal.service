@@ -6,7 +6,7 @@ After=network.target
 Type=oneshot
 User=root
 Group=root
-ExecStart=/bin/bash -c 'mkdir -p /mnt/internal; chown 1000:100 /mnt/internal; mountpoint -q /mnt/internal || mount -t virtiofs internal /mnt/internal'
+ExecStart=/bin/bash -c 'mkdir -p /mnt/internal; chown 1000:1000 /mnt/internal; mountpoint -q /mnt/internal || mount -t virtiofs internal /mnt/internal'
 RemainAfterExit=yes
 
 [Install]

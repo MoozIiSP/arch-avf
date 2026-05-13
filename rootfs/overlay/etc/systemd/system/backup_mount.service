@@ -6,7 +6,7 @@ After=network.target virtiofs_internal.service
 Type=oneshot
 User=root
 Group=root
-ExecStart=/bin/bash -c '[ -e /dev/vdb ] && (mkdir -p /mnt/backup; chown 1000:100 /mnt/backup; mountpoint -q /mnt/backup || mount /dev/vdb /mnt/backup) || rm -rf /mnt/backup'
+ExecStart=/bin/bash -c '[ -e /dev/vdb ] && (mkdir -p /mnt/backup; chown 1000:1000 /mnt/backup; mountpoint -q /mnt/backup || mount /dev/vdb /mnt/backup) || rm -rf /mnt/backup'
 RemainAfterExit=yes
 
 [Install]

@@ -6,7 +6,7 @@ After=network.target
 Type=oneshot
 User=root
 Group=root
-ExecStart=/bin/bash -c 'mkdir -p /mnt/shared; chown 1000:100 /mnt/shared; mountpoint -q /mnt/shared || mount -t virtiofs android /mnt/shared'
+ExecStart=/bin/bash -c 'mkdir -p /mnt/shared; chown 1000:1000 /mnt/shared; mountpoint -q /mnt/shared || mount -t virtiofs android /mnt/shared'
 RemainAfterExit=yes
 
 [Install]

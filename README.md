@@ -139,8 +139,8 @@ it removes the stock `linux-aarch64`/`linux-firmware` packages and installs the
 AVF kernel pacman packages plus the local `arch-avf-config` pacman package with
 `pacman -U`. The config package owns the AVF guest services,
 debug hooks, ttyd wiring, first-boot setup, and the Android Terminal-compatible
-`droid` user at UID 1000, so kernel updates can be shipped independently from
-full image rebuilds.
+`droid` user/group at UID/GID 1000, so kernel updates can be shipped
+independently from full image rebuilds.
 
 ## Deploy
 

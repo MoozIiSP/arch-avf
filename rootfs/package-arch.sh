@@ -82,20 +82,26 @@ chmod 0440 "$pkgdir/etc/sudoers.d/10-avf-droid"
 cat > "$pkgdir/.INSTALL" <<'EOF'
 post_install() {
   droid_user=droid
+  droid_group=droid
 
-  if ! getent group 100 >/dev/null; then
-    groupadd -g 100 android
+  existing_gid1000="$(getent group 1000 | cut -d: -f1 || true)"
+  if getent group "$droid_group" >/dev/null; then
+    if [ "$(getent group "$droid_group" | cut -d: -f3)" != "1000" ]; then
+      groupmod -g 1000 "$droid_group"
+    fi
+  elif [ -n "$existing_gid1000" ]; then
+    groupmod -n "$droid_group" "$existing_gid1000"
+  else
+    groupadd -g 1000 "$droid_group"
   fi
-
-  primary_group="$(getent group 100 | cut -d: -f1)"
   existing_uid1000="$(getent passwd 1000 | cut -d: -f1 || true)"
 
   if id -u "$droid_user" >/dev/null 2>&1; then
-    usermod -u 1000 -g "$primary_group" -d "/home/$droid_user" -m -s /usr/bin/bash "$droid_user"
+    usermod -u 1000 -g "$droid_group" -d "/home/$droid_user" -m -s /usr/bin/bash "$droid_user"
   elif [ -n "$existing_uid1000" ]; then
-    usermod -l "$droid_user" -d "/home/$droid_user" -m -g "$primary_group" -s /usr/bin/bash "$existing_uid1000"
+    usermod -l "$droid_user" -d "/home/$droid_user" -m -g "$droid_group" -s /usr/bin/bash "$existing_uid1000"
   else
-    useradd -m -u 1000 -g "$primary_group" -s /usr/bin/bash "$droid_user"
+    useradd -m -u 1000 -g "$droid_group" -s /usr/bin/bash "$droid_user"
   fi
 
   for group in wheel sudo video render seat; do
@@ -112,7 +118,7 @@ if [[ $- == *i* ]]; then
 fi
 BASHRC
   fi
-  chown "$droid_user:$primary_group" "/home/$droid_user/.bashrc" 2>/dev/null || true
+  chown "$droid_user:$droid_group" "/home/$droid_user/.bashrc" 2>/dev/null || true
   loginctl enable-linger "$droid_user" || true
 }
 
