@@ -132,9 +132,10 @@ workflows.
 
 The image workflow runs monthly and downloads the kernel package artifacts from
 the existing kernel release instead of rebuilding the kernel. The rootfs build
-uses the Arch Linux ARM latest aarch64 rootfs tarball and installs the kernel
-pacman packages with `pacman -U`, so kernel updates can be shipped independently
-from full image rebuilds.
+uses the Arch Linux ARM latest aarch64 rootfs tarball only as the base userspace:
+it removes the stock `linux-aarch64`/`linux-firmware` packages and installs the
+AVF kernel pacman packages with `pacman -U`, so kernel updates can be shipped
+independently from full image rebuilds.
 
 ## Deploy
 
