@@ -48,7 +48,7 @@ run systemctl --no-pager --failed
 run systemctl --no-pager status sshd.service sshdgenkeys.service systemd-networkd.service systemd-resolved.service
 run systemctl --no-pager status mnt-shared.mount mnt-shared.automount mnt-internal.mount mnt-internal.automount
 run systemctl --no-pager status ttyd.service ttyd_uds.service ttyd_vsock_bridge.service avahi_ttyd.service
-run systemctl --no-pager status forwarder_guest_launcher.service storage_balloon_agent.service shutdown_runner.service attach-cidata.service
+run systemctl --no-pager status forwarder_guest_launcher.service storage_balloon_agent.service shutdown_runner.service
 
 section "recent journal"
 run journalctl -b --no-pager -n 500

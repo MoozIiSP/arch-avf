@@ -112,33 +112,7 @@ pacman -U --noconfirm /kernel_packages/*.pkg.tar.zst /avf_packages/*.pkg.tar.zst
 ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 echo archlinux > /etc/hostname
 printf 'root:%s\n' "$ROOT_PASSWORD" | chpasswd
-if ! getent group 100 >/dev/null; then
-    groupadd -g 100 android
-fi
-primary_group="\$(getent group 100 | cut -d: -f1)"
-existing_uid1000="\$(getent passwd 1000 | cut -d: -f1 || true)"
-if id -u "$DROID_USER" >/dev/null 2>&1; then
-    usermod -u 1000 -g "\$primary_group" -s /usr/bin/bash "$DROID_USER"
-elif [ -n "\$existing_uid1000" ]; then
-    usermod -l "$DROID_USER" -d /home/"$DROID_USER" -m -g "\$primary_group" -s /usr/bin/bash "\$existing_uid1000"
-else
-    useradd -m -u 1000 -g "\$primary_group" -s /usr/bin/bash "$DROID_USER"
-fi
 printf '%s:%s\n' "$DROID_USER" "$DROID_PASSWORD" | chpasswd
-loginctl enable-linger "$DROID_USER" || true
-for group in wheel sudo video render seat; do
-    getent group "\$group" >/dev/null && usermod -aG "\$group" "$DROID_USER"
-done
-echo "$DROID_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/10-avf-droid
-chmod 0440 /etc/sudoers.d/10-avf-droid
-printf '%s\n' \
-    '# Match Android Terminal'\''s Debian shell title behavior.' \
-    'if [[ $- == *i* ]]; then' \
-    '    unset PROMPT_COMMAND' \
-    '    PROMPT_COMMAND='\''printf "\033]0;%s %s\007" "${USER:-droid}" "${HOSTNAME%%.*}"'\''' \
-    'fi' \
-    >> /home/"$DROID_USER"/.bashrc
-chown "$DROID_USER:100" /home/"$DROID_USER"/.bashrc
 ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 echo 'Welcome to Arch Linux on Android Terminal.' > /etc/motd
 echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
@@ -252,11 +226,6 @@ systemctl enable \
     storage_balloon_agent.service \
     forwarder_guest_launcher.service \
     shutdown_runner.service \
-    attach-cidata.service \
-    cloud-init-local.service \
-    cloud-init.service \
-    cloud-config.service \
-    cloud-final.service \
     ttyd.service \
     ttyd_uds.service \
     ttyd_vsock_bridge.service \

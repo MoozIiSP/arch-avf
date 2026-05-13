@@ -137,9 +137,10 @@ the existing kernel release instead of rebuilding the kernel. The rootfs build
 uses the Arch Linux ARM latest aarch64 rootfs tarball only as the base userspace:
 it removes the stock `linux-aarch64`/`linux-firmware` packages and installs the
 AVF kernel pacman packages plus the local `arch-avf-config` pacman package with
-`pacman -U`. The config package owns the AVF guest services, cloud-init config,
-debug hooks, ttyd wiring, and first-boot setup, so kernel updates can be shipped
-independently from full image rebuilds.
+`pacman -U`. The config package owns the AVF guest services,
+debug hooks, ttyd wiring, first-boot setup, and the Android Terminal-compatible
+`droid` user at UID 1000, so kernel updates can be shipped independently from
+full image rebuilds.
 
 ## Deploy
 

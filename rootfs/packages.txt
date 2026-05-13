@@ -30,5 +30,3 @@ procps-ng
 man-db
 man-pages
 socat
-cloud-init
-cloud-guest-utils
