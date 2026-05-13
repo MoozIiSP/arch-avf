@@ -120,6 +120,28 @@ BASHRC
   fi
   chown "$droid_user:$droid_group" "/home/$droid_user/.bashrc" 2>/dev/null || true
   loginctl enable-linger "$droid_user" || true
+
+  install -d -m 0755 /etc/avahi
+  cat > /etc/avahi/avahi-daemon.conf <<'AVAHI'
+[server]
+use-ipv4=yes
+use-ipv6=no
+enable-dbus=yes
+
+[wide-area]
+enable-wide-area=no
+
+[publish]
+disable-publishing=no
+disable-user-service-publishing=no
+publish-addresses=yes
+publish-hinfo=no
+publish-workstation=no
+publish-domain=no
+
+[reflector]
+enable-reflector=no
+AVAHI
 }
 
 post_upgrade() {
