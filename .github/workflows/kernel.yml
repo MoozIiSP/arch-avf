@@ -145,6 +145,7 @@ jobs:
           cp build/packages/*.pkg.tar.zst dist/
           tar -C build/kernel -czf "dist/$kernel_package" \
             vmlinuz \
+            Image.gz \
             kernel.release \
             kernel.config \
             kernel.source \

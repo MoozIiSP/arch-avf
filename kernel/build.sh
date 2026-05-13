@@ -148,6 +148,7 @@ fi
 # Android Terminal feeds $PAYLOAD_DIR/vmlinuz directly to crosvm, which expects
 # the raw arm64 Image header rather than a gzip stream.
 cp arch/arm64/boot/Image "$OUTPUT_DIR/vmlinuz"
+cp arch/arm64/boot/Image.gz "$OUTPUT_DIR/Image.gz"
 cp .config "$OUTPUT_DIR/kernel.config"
 cat > "$OUTPUT_DIR/kernel.source" <<EOF
 KERNEL_VERSION="$KERNEL_VERSION"
@@ -289,6 +290,7 @@ fi
 # Android Terminal feeds $PAYLOAD_DIR/vmlinuz directly to crosvm, which expects
 # the raw arm64 Image header rather than a gzip stream.
 cp arch/arm64/boot/Image /output/vmlinuz
+cp arch/arm64/boot/Image.gz /output/Image.gz
 cp .config /output/kernel.config
 cat > /output/kernel.source <<EOF
 KERNEL_VERSION="$KERNEL_VERSION"

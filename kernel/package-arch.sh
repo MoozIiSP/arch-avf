@@ -107,36 +107,66 @@ mkdir -p "$PACKAGE_BUILD_DIR" "$PACKAGE_OUT_DIR"
 
 kernel_pkgname="$PKGBASE"
 kernel_pkgdir="$PACKAGE_BUILD_DIR/$kernel_pkgname"
-install -d "$kernel_pkgdir/boot" "$kernel_pkgdir/usr/lib/modules" "$kernel_pkgdir/usr/share/$kernel_pkgname"
+modulesdir="$kernel_pkgdir/usr/lib/modules/$KERNEL_RELEASE"
+install -d \
+    "$kernel_pkgdir/boot" \
+    "$kernel_pkgdir/etc/mkinitcpio.d" \
+    "$kernel_pkgdir/usr/lib/initcpio" \
+    "$kernel_pkgdir/usr/share/$kernel_pkgname" \
+    "$modulesdir"
+cp "$KERNEL_BUILD_DIR/vmlinuz" "$kernel_pkgdir/boot/Image"
 cp "$KERNEL_BUILD_DIR/vmlinuz" "$kernel_pkgdir/boot/vmlinuz-$kernel_pkgname"
+cp "$KERNEL_BUILD_DIR/vmlinuz" "$modulesdir/vmlinuz"
+if [ -s "$KERNEL_BUILD_DIR/Image.gz" ]; then
+    cp "$KERNEL_BUILD_DIR/Image.gz" "$kernel_pkgdir/boot/Image.gz"
+fi
 cp -a "$KERNEL_BUILD_DIR/modules/lib/modules/." "$kernel_pkgdir/usr/lib/modules/"
 cp "$KERNEL_BUILD_DIR/kernel.config" "$kernel_pkgdir/usr/share/$kernel_pkgname/config"
 cp "$KERNEL_BUILD_DIR/kernel.source" "$kernel_pkgdir/usr/share/$kernel_pkgname/source"
 printf '%s\n' "$KERNEL_RELEASE" > "$kernel_pkgdir/usr/share/$kernel_pkgname/kernel.release"
+printf '%s\n' "$kernel_pkgname" > "$modulesdir/pkgbase"
+cp "$KERNEL_BUILD_DIR/kernel.config" "$modulesdir/config"
+cat > "$kernel_pkgdir/etc/mkinitcpio.d/$kernel_pkgname.preset" <<EOF
+# mkinitcpio preset file for the '$kernel_pkgname' package
+
+#ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="$KERNEL_RELEASE"
+
+PRESETS=('default' 'fallback')
+
+#default_config="/etc/mkinitcpio.conf"
+default_image="/boot/initramfs-$kernel_pkgname.img"
+#default_options=""
+
+#fallback_config="/etc/mkinitcpio.conf"
+fallback_image="/boot/initramfs-$kernel_pkgname-fallback.img"
+fallback_options="-S autodetect"
+EOF
+printf 'dummy file to trigger mkinitcpio to run\n' > "$kernel_pkgdir/usr/lib/initcpio/$KERNEL_RELEASE"
 cat > "$kernel_pkgdir/.INSTALL" <<EOF
-post_install() {
-  depmod "$KERNEL_RELEASE" || true
-  if command -v mkinitcpio >/dev/null 2>&1; then
-    mkinitcpio -k "$KERNEL_RELEASE" -g /boot/initrd-$kernel_pkgname.img || true
+post_upgrade() {
+  if findmnt --fstab -uno SOURCE /boot >/dev/null 2>&1 && ! mountpoint -q /boot; then
+    echo "WARNING: /boot appears to be a separate partition but is not mounted."
   fi
 }
 
-post_upgrade() {
-  post_install
-}
-
 post_remove() {
-  depmod "$KERNEL_RELEASE" || true
+  rm -f boot/initramfs-$kernel_pkgname.img
+  rm -f boot/initramfs-$kernel_pkgname-fallback.img
 }
 EOF
 INSTALL_SCRIPT=1
 write_pkginfo "$kernel_pkgdir" "$kernel_pkgname" \
     "Android common Linux kernel for Arch AVF" \
     "$(dir_size "$kernel_pkgdir")" \
+    "depend = coreutils" \
     "depend = kmod" \
+    "depend = mkinitcpio>=0.7" \
     "optdepend = mkinitcpio: initramfs generation" \
+    "optdepend = linux-firmware: firmware images needed for some devices" \
     "provides = linux=$PKGVER" \
     "provides = linux-aarch64=$PKGVER" \
+    "conflict = linux" \
     "conflict = linux-aarch64"
 kernel_pkg="$(make_pkg "$kernel_pkgdir" "$kernel_pkgname")"
 
