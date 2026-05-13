@@ -3,6 +3,8 @@ name: kernel
 on:
   schedule:
     - cron: "17 3 * * *"
+  repository_dispatch:
+    types: [linux-release]
   workflow_dispatch:
     inputs:
       google_ref:
@@ -20,11 +22,7 @@ on:
         default: true
         type: boolean
       kernel_release_tag:
-        description: "Existing release tag for kernel pacman packages."
-        required: false
-        type: string
-      image_release_tag:
-        description: "Existing release tag for the replace image package."
+        description: "Existing release tag for kernel pacman packages. Defaults to vars.KERNEL_RELEASE_TAG."
         required: false
         type: string
 
@@ -56,36 +54,48 @@ jobs:
           scripts/resolve-google-kernel-ref.sh "${args[@]}" | tee kernel-version.env
           cat kernel-version.env >> "$GITHUB_ENV"
 
-      - name: Resolve release tags
+      - name: Resolve release tag
         id: releases
         env:
-          KERNEL_RELEASE_TAG_INPUT: ${{ github.event.inputs.kernel_release_tag }}
-          IMAGE_RELEASE_TAG_INPUT: ${{ github.event.inputs.image_release_tag }}
+          KERNEL_RELEASE_TAG_INPUT: ${{ github.event.inputs.kernel_release_tag || github.event.client_payload.kernel_release_tag || vars.KERNEL_RELEASE_TAG }}
           KERNEL_REF: ${{ steps.kernel.outputs.KERNEL_GIT_REF }}
         run: |
-          kernel_release_tag="${KERNEL_RELEASE_TAG_INPUT:-kernel-$KERNEL_REF}"
-          image_release_tag="${IMAGE_RELEASE_TAG_INPUT:-archlinux-$(date -u +%Y.%m.%d)}"
+          kernel_release_tag="$KERNEL_RELEASE_TAG_INPUT"
+          if [ -z "$kernel_release_tag" ]; then
+            echo "kernel_release_tag is required for kernel builds" >&2
+            exit 1
+          fi
           echo "KERNEL_RELEASE_TAG=$kernel_release_tag" >> "$GITHUB_OUTPUT"
-          echo "IMAGE_RELEASE_TAG=$image_release_tag" >> "$GITHUB_OUTPUT"
           echo "Kernel release tag: $kernel_release_tag"
-          echo "Image release tag: $image_release_tag"
 
-      - name: Check existing releases
+      - name: Check existing release
         id: existing
         env:
           GH_TOKEN: ${{ github.token }}
           KERNEL_RELEASE_TAG: ${{ steps.releases.outputs.KERNEL_RELEASE_TAG }}
-          IMAGE_RELEASE_TAG: ${{ steps.releases.outputs.IMAGE_RELEASE_TAG }}
         run: |
-          for release_tag in "$KERNEL_RELEASE_TAG" "$IMAGE_RELEASE_TAG"; do
-            if ! gh release view "$release_tag" >/dev/null 2>&1; then
-              echo "Missing existing release: $release_tag" >&2
-              exit 1
-            fi
-          done
-          echo "Both target releases already exist."
+          if ! gh release view "$KERNEL_RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Missing existing release: $KERNEL_RELEASE_TAG" >&2
+            exit 1
+          fi
+          echo "Target kernel release already exists."
+
+      - name: Check existing kernel assets
+        id: assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KERNEL_RELEASE_TAG: ${{ steps.releases.outputs.KERNEL_RELEASE_TAG }}
+          KERNEL_ASSET: arch-avf-kernel-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz
+        run: |
+          if gh release view "$KERNEL_RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fx "$KERNEL_ASSET" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Kernel assets already exist for $KERNEL_ASSET"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install host tools
+        if: steps.assets.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -114,6 +124,7 @@ jobs:
             zstd
 
       - name: Build kernel packages from Google tag
+        if: steps.assets.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
         run: |
           KERNEL_BUILD_BACKEND=host \
           KERNEL_GIT_REPO="$KERNEL_GIT_REPO" \
@@ -121,18 +132,11 @@ jobs:
           KERNEL_VERSION="$KERNEL_VERSION" \
           make kernel-packages
 
-      - name: Build installable replace package
-        run: |
-          make rootfs
-          bash image/create-disk.sh
-          bash image/assemble.sh
-          make check
-
-      - name: Package kernel and replace artifacts
+      - name: Package kernel artifacts
+        if: steps.assets.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
         run: |
           mkdir -p dist
           kernel_package="arch-avf-kernel-${KERNEL_GIT_REF}.tar.gz"
-          replace_package="archlinux-avf-aarch64-replace-${KERNEL_GIT_REF}.tar.gz"
           cp build/packages/*.pkg.tar.zst dist/
           tar -C build/kernel -czf "dist/$kernel_package" \
             vmlinuz \
@@ -140,24 +144,22 @@ jobs:
             kernel.config \
             kernel.source \
             modules
-          cp build/arch-avf-replace.tar.gz "dist/$replace_package"
           sha256sum dist/*.pkg.tar.zst "dist/$kernel_package" > "dist/SHA256SUMS.kernel"
-          sha256sum "dist/$replace_package" > "dist/SHA256SUMS.image"
 
       - name: Upload kernel build artifacts
+        if: steps.assets.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: arch-avf-kernel-${{ steps.kernel.outputs.KERNEL_GIT_REF }}
           path: |
             dist/arch-avf-kernel-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz
             dist/*.pkg.tar.zst
-            dist/archlinux-avf-aarch64-replace-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz
             dist/SHA256SUMS.kernel
-            dist/SHA256SUMS.image
           if-no-files-found: error
 
       - name: Upload kernel release assets
         if: >
+          (steps.assets.outputs.exists != 'true' || github.event_name == 'workflow_dispatch') &&
           (github.event_name == 'schedule' || github.event.inputs.publish_release == 'true')
         uses: softprops/action-gh-release@v2
         with:
@@ -185,17 +187,3 @@ jobs:
             Pacman packages:
             `arch-avf-linux-android-*.pkg.tar.zst`
             `arch-avf-linux-android-firmware-*.pkg.tar.zst`
-
-      - name: Upload image release assets
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_release == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.releases.outputs.IMAGE_RELEASE_TAG }}
-          make_latest: false
-          files: |
-            dist/archlinux-avf-aarch64-replace-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz
-            dist/SHA256SUMS.image
-          body: |
-            Arch Linux ARM image for Android 16 AVF Terminal app.
-
-            This release publishes the production `replace` package only.

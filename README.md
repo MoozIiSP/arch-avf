@@ -126,9 +126,15 @@ matching `android16-6.12.*_r*`. It runs daily and can also be started manually;
 when a newer Google tag appears, it uploads kernel/firmware pacman packages to
 an existing kernel release and uploads the production `replace` package to an
 existing image release. The two release tags are separate, and the workflow
-does not create releases. The rootfs build installs the generated pacman
-packages with `pacman -U`, so kernel updates can be shipped independently from
-full image rebuilds.
+does not create releases. Configure repository variables `KERNEL_RELEASE_TAG`
+and `IMAGE_RELEASE_TAG`, or pass those tags when manually dispatching the
+workflows.
+
+The image workflow runs monthly and downloads the kernel package artifacts from
+the existing kernel release instead of rebuilding the kernel. The rootfs build
+uses the Arch Linux ARM latest aarch64 rootfs tarball and installs the kernel
+pacman packages with `pacman -U`, so kernel updates can be shipped independently
+from full image rebuilds.
 
 ## Deploy
 

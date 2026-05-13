@@ -1,11 +1,25 @@
 name: build
 
 on:
-  push:
-    branches: [main]
-    tags: ["v*", "archlinux-*"]
-  pull_request:
+  schedule:
+    - cron: "47 4 2 * *"
+  repository_dispatch:
+    types: [kernel-release]
   workflow_dispatch:
+    inputs:
+      kernel_release_tag:
+        description: "Existing release tag to download kernel pacman packages from. Defaults to vars.KERNEL_RELEASE_TAG."
+        required: false
+        type: string
+      image_release_tag:
+        description: "Existing release tag to upload the replace image into. Defaults to vars.IMAGE_RELEASE_TAG."
+        required: false
+        type: string
+      publish_release:
+        description: "Upload replace image assets to the existing image release."
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -21,6 +35,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Resolve build inputs
+        id: inputs
+        env:
+          KERNEL_RELEASE_TAG_INPUT: ${{ github.event.inputs.kernel_release_tag || github.event.client_payload.kernel_release_tag || vars.KERNEL_RELEASE_TAG }}
+          IMAGE_RELEASE_TAG_INPUT: ${{ github.event.inputs.image_release_tag || github.event.client_payload.image_release_tag || vars.IMAGE_RELEASE_TAG }}
+          PUBLISH_RELEASE_INPUT: ${{ github.event.inputs.publish_release || github.event.client_payload.publish_release || 'true' }}
+        run: |
+          kernel_release_tag="$KERNEL_RELEASE_TAG_INPUT"
+          image_release_tag="$IMAGE_RELEASE_TAG_INPUT"
+          if [ -z "$kernel_release_tag" ]; then
+            echo "kernel_release_tag is required for image builds" >&2
+            exit 1
+          fi
+          if [ -z "$image_release_tag" ]; then
+            echo "image_release_tag is required for image builds" >&2
+            exit 1
+          fi
+          echo "KERNEL_RELEASE_TAG=$kernel_release_tag" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_RELEASE_TAG=$image_release_tag" >> "$GITHUB_OUTPUT"
+          echo "PUBLISH_RELEASE=$PUBLISH_RELEASE_INPUT" >> "$GITHUB_OUTPUT"
+          echo "Kernel release tag: $kernel_release_tag"
+          echo "Image release tag: $image_release_tag"
+          echo "Publish release: $PUBLISH_RELEASE_INPUT"
+
       - name: Install host tools
         run: |
           sudo apt-get update
@@ -35,18 +73,33 @@ jobs:
             flex \
             kmod \
             libarchive-tools \
-            libdw-dev \
-            libelf-dev \
-            libssl-dev \
-            lld \
-            llvm \
-            patch \
+            make \
             qemu-user-static \
             systemd-container \
             zstd
 
-      - name: Build kernel packages
-        run: KERNEL_BUILD_BACKEND=host make kernel-packages
+      - name: Download kernel release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KERNEL_RELEASE_TAG: ${{ steps.inputs.outputs.KERNEL_RELEASE_TAG }}
+        run: |
+          gh release view "$KERNEL_RELEASE_TAG" >/dev/null
+          mkdir -p build/kernel-download build/kernel build/packages
+          gh release download "$KERNEL_RELEASE_TAG" \
+            --pattern 'arch-avf-kernel-*.tar.gz' \
+            --dir build/kernel-download \
+            --clobber
+          gh release download "$KERNEL_RELEASE_TAG" \
+            --pattern '*.pkg.tar.zst' \
+            --dir build/packages \
+            --clobber
+          kernel_archive="$(find build/kernel-download -maxdepth 1 -name 'arch-avf-kernel-*.tar.gz' | sort | tail -n 1)"
+          [ -n "$kernel_archive" ] || { echo "Missing arch-avf-kernel tarball in $KERNEL_RELEASE_TAG" >&2; exit 1; }
+          tar -C build/kernel -xzf "$kernel_archive"
+          test -s build/kernel/vmlinuz
+          test -s build/kernel/kernel.release
+          test -d build/kernel/modules/lib/modules
+          compgen -G 'build/packages/*.pkg.tar.zst' >/dev/null
 
       - name: Build rootfs
         run: make rootfs
@@ -63,10 +116,10 @@ jobs:
           sha256sum archlinux-avf-aarch64-replace.tar.gz > archlinux-avf-aarch64-replace.tar.gz.sha256
 
       - name: Check existing release
-        if: startsWith(github.ref, 'refs/tags/v') || (startsWith(github.ref, 'refs/tags/archlinux-') && !contains(github.ref, 'before-'))
+        if: steps.inputs.outputs.PUBLISH_RELEASE == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ steps.inputs.outputs.IMAGE_RELEASE_TAG }}
         run: |
           if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "Missing existing release: $RELEASE_TAG" >&2
@@ -74,9 +127,11 @@ jobs:
           fi
 
       - name: Upload image release assets
-        if: startsWith(github.ref, 'refs/tags/v') || (startsWith(github.ref, 'refs/tags/archlinux-') && !contains(github.ref, 'before-'))
+        if: steps.inputs.outputs.PUBLISH_RELEASE == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.inputs.outputs.IMAGE_RELEASE_TAG }}
+          make_latest: false
           files: |
             archlinux-avf-aarch64-replace.tar.gz
             archlinux-avf-aarch64-replace.tar.gz.sha256
