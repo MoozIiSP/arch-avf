@@ -48,7 +48,7 @@ jobs:
             echo "kernel_release_tag is required for image builds" >&2
             exit 1
           fi
-          if [ -z "$image_release_tag" ]; then
+          if [ "$PUBLISH_RELEASE_INPUT" = "true" ] && [ -z "$image_release_tag" ]; then
             echo "image_release_tag is required for image builds" >&2
             exit 1
           fi
