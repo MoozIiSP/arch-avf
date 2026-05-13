@@ -77,6 +77,7 @@ Useful targets:
 
 ```bash
 make kernel            # Cross-compile aarch64 Linux kernel and modules
+make kernel-packages   # Build Arch pacman packages for the kernel and firmware
 make rootfs            # Build Arch Linux ARM rootfs and initrd.img
 make image             # Create root_part, payload dir, and the replace package
 make payload           # Refresh build/payload only, without packaging tarballs
@@ -92,6 +93,7 @@ build/rootfs/rootfs.tar.gz
 build/initrd.img
 build/kernel/vmlinuz
 build/kernel/modules/
+build/packages/*.pkg.tar.zst
 build/image/root_part
 build/payload/
 build/arch-avf-replace.tar.gz
@@ -101,7 +103,7 @@ build/arch-avf-replace.tar.gz.sha256
 Tunable environment variables:
 
 ```bash
-KERNEL_VERSION=6.12.77 KERNEL_GIT_REF=android16-6.12.77_r00 make kernel
+KERNEL_VERSION=6.12.77 KERNEL_GIT_REF=android16-6.12.77_r00 make kernel-packages
 ROOT_SIZE_MB=8192 make image
 ROOT_PASSWORD=secret DROID_PASSWORD=secret make rootfs
 PUSH_ROOT_PART=0 make deploy
@@ -118,6 +120,14 @@ KERNEL_BASE_CONFIG=android_avf
 ```
 
 `config/debian_kernel_config` is an Android/GKI-style arm64 config aligned from Google's Debian Terminal image.
+
+The `kernel` GitHub Actions workflow tracks Google's Android common kernel tags
+matching `android16-6.12.*_r*`. It runs daily and can also be started manually;
+when a newer Google tag appears, it publishes a `kernel-<google-ref>` release
+with kernel/firmware pacman packages, a kernel-only archive, and a production
+`replace` install package. The rootfs build installs the generated pacman
+packages with `pacman -U`, so kernel updates can be shipped independently from
+full image rebuilds.
 
 ## Deploy
 

@@ -4,9 +4,11 @@ PROJECT_DIR := $(CURDIR)
 BUILD_DIR := $(PROJECT_DIR)/build
 PAYLOAD_DIR := $(BUILD_DIR)/payload
 
-.PHONY: all rootfs kernel android-services image payload replace deploy clean distclean check check-payload
+.PHONY: all rootfs kernel kernel-packages android-services image payload replace deploy clean distclean check check-payload
 
-all: kernel rootfs image check
+.NOTPARALLEL:
+
+all: image check
 
 rootfs:
 	@bash "$(PROJECT_DIR)/rootfs/build.sh"
@@ -14,10 +16,13 @@ rootfs:
 kernel:
 	@bash "$(PROJECT_DIR)/kernel/build.sh"
 
+kernel-packages: kernel
+	@bash "$(PROJECT_DIR)/kernel/package-arch.sh"
+
 android-services:
 	@bash "$(PROJECT_DIR)/android-services/build.sh"
 
-image: kernel rootfs
+image: kernel-packages rootfs
 	@bash "$(PROJECT_DIR)/image/create-disk.sh"
 	@bash "$(PROJECT_DIR)/image/assemble.sh"
 

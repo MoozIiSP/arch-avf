@@ -8,7 +8,7 @@ ROOTFS_DIR="$BUILD_DIR/rootfs"
 CACHE_DIR="$BUILD_DIR/cache"
 OUTPUT="$BUILD_DIR/rootfs.tar.gz"
 INITRD_OUT="$BUILD_DIR/initrd.img"
-KERNEL_MODULES_DIR="${KERNEL_MODULES_DIR:-$PROJECT_DIR/build/kernel/modules}"
+KERNEL_PACKAGES_DIR="${KERNEL_PACKAGES_DIR:-$PROJECT_DIR/build/packages}"
 KERNEL_RELEASE_FILE="${KERNEL_RELEASE_FILE:-$PROJECT_DIR/build/kernel/kernel.release}"
 ANDROID_SERVICES_DIR="${ANDROID_SERVICES_DIR:-$PROJECT_DIR/build/android-services/out}"
 OVERLAY_DIR="$SCRIPT_DIR/overlay"
@@ -21,8 +21,8 @@ RATE_MIRRORS_VERSION="${RATE_MIRRORS_VERSION:-v0.28.3}"
 RATE_MIRRORS_SHA256="${RATE_MIRRORS_SHA256:-191acbe1c52a966a342cd9c6ae32841a11e01fe4c612b8d72267c5f97b1d455c}"
 RATE_MIRRORS_URL="${RATE_MIRRORS_URL:-https://github.com/westandskif/rate-mirrors/releases/download/$RATE_MIRRORS_VERSION/rate-mirrors-$RATE_MIRRORS_VERSION-aarch64-unknown-linux-musl.tar.gz}"
 
-[ -d "$KERNEL_MODULES_DIR/lib/modules" ] || { echo "Missing kernel modules: $KERNEL_MODULES_DIR/lib/modules. Run make kernel first." >&2; exit 1; }
-[ -f "$KERNEL_RELEASE_FILE" ] || { echo "Missing kernel release file: $KERNEL_RELEASE_FILE. Run make kernel first." >&2; exit 1; }
+[ -f "$KERNEL_RELEASE_FILE" ] || { echo "Missing kernel release file: $KERNEL_RELEASE_FILE. Run make kernel-packages first." >&2; exit 1; }
+compgen -G "$KERNEL_PACKAGES_DIR/*.pkg.tar.zst" >/dev/null || { echo "Missing kernel pacman packages: $KERNEL_PACKAGES_DIR/*.pkg.tar.zst. Run make kernel-packages first." >&2; exit 1; }
 
 mkdir -p "$BUILD_DIR" "$CACHE_DIR" "$ANDROID_SERVICES_DIR"
 
@@ -33,7 +33,7 @@ echo "==> Creating Arch Linux ARM rootfs"
 podman run --rm -i --privileged --platform linux/arm64 \
     -v "$BUILD_DIR:/build" \
     -v "$SCRIPT_DIR/packages.txt:/packages.txt:ro" \
-    -v "$KERNEL_MODULES_DIR:/kernel_modules:ro" \
+    -v "$KERNEL_PACKAGES_DIR:/kernel_packages_src:ro" \
     -v "$KERNEL_RELEASE_FILE:/kernel_release:ro" \
     -v "$ANDROID_SERVICES_DIR:/android-services:ro" \
     -v "$OVERLAY_DIR:/overlay:ro" \
@@ -65,6 +65,8 @@ fi
 printf '%s  %s\n' "$RATE_MIRRORS_SHA256" "$RATE_MIRRORS_TARBALL" | sha256sum -c -
 
 bsdtar -xpf "$TARBALL" -C "$ROOTFS_DIR"
+mkdir -p "$ROOTFS_DIR/kernel_packages"
+cp -a /kernel_packages_src/*.pkg.tar.zst "$ROOTFS_DIR/kernel_packages/"
 
 rm -f "$ROOTFS_DIR/etc/resolv.conf"
 install -Dm644 /etc/resolv.conf "$ROOTFS_DIR/etc/resolv.conf"
@@ -101,6 +103,7 @@ pacman-key --populate archlinuxarm
 pacman -Rns --noconfirm linux-aarch64 linux-firmware || true
 pacman_retry -Syu --noconfirm
 pacman_retry -S --needed --noconfirm $PACKAGES
+pacman -U --noconfirm /kernel_packages/*.pkg.tar.zst
 ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 echo archlinux > /etc/hostname
 printf 'root:%s\n' "$ROOT_PASSWORD" | chpasswd
@@ -117,6 +120,7 @@ else
     useradd -m -u 1000 -g "\$primary_group" -s /usr/bin/bash "$DROID_USER"
 fi
 printf '%s:%s\n' "$DROID_USER" "$DROID_PASSWORD" | chpasswd
+loginctl enable-linger "$DROID_USER" || true
 for group in wheel sudo video render seat; do
     getent group "\$group" >/dev/null && usermod -aG "\$group" "$DROID_USER"
 done
@@ -124,19 +128,21 @@ echo "$DROID_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/10-avf-droid
 chmod 0440 /etc/sudoers.d/10-avf-droid
 printf '%s\n' \
     '# Match Android Terminal'\''s Debian shell title behavior.' \
-    'trap '\''echo -ne "\e]0;\$BASH_COMMAND\007"'\'' DEBUG' \
+    'if [[ $- == *i* ]]; then' \
+    '    unset PROMPT_COMMAND' \
+    '    PROMPT_COMMAND='\''printf "\033]0;%s %s\007" "${USER:-droid}" "${HOSTNAME%%.*}"'\''' \
+    'fi' \
     >> /home/"$DROID_USER"/.bashrc
 chown "$DROID_USER:100" /home/"$DROID_USER"/.bashrc
 ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+echo 'Welcome to Arch Linux on Android Terminal.' > /etc/motd
 echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
 echo 'LANG=en_US.UTF-8' > /etc/locale.conf
 locale-gen
 CHROOT
 
-mkdir -p "$ROOTFS_DIR/usr/lib/modules"
-cp -a /kernel_modules/lib/modules/. "$ROOTFS_DIR/usr/lib/modules/"
-chroot "$ROOTFS_DIR" depmod "$KERNEL_RELEASE"
 rm -rf "$ROOTFS_DIR/var/cache/pacman/pkg/"*
+rm -rf "$ROOTFS_DIR/kernel_packages"
 
 cp -a /overlay/. "$ROOTFS_DIR/"
 rate_mirrors_extract="$(mktemp -d)"
@@ -198,6 +204,7 @@ mkdir -p "$ROOTFS_DIR/etc/systemd/resolved.conf.d"
 cat > "$ROOTFS_DIR/etc/systemd/resolved.conf.d/10-avf.conf" <<'EOF'
 [Resolve]
 LLMNR=no
+MulticastDNS=no
 EOF
 
 mkdir -p "$ROOTFS_DIR/etc/systemd/system/serial-getty@ttyS0.service.d"

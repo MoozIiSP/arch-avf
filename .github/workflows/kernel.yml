@@ -1,0 +1,189 @@
+name: kernel
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      google_ref:
+        description: "Android common kernel tag to build. Empty means latest matching tag_pattern."
+        required: false
+        type: string
+      tag_pattern:
+        description: "Google tag glob used when google_ref is empty."
+        required: false
+        default: "android16-6.12.*_r*"
+        type: string
+      publish_release:
+        description: "Publish a GitHub release for the built kernel package."
+        required: false
+        default: true
+        type: boolean
+      release_tag:
+        description: "Existing release tag to publish into. Empty means kernel-<google_ref>."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.inputs.google_ref || github.event.inputs.tag_pattern || 'android16-6.12' }}
+  cancel-in-progress: false
+
+jobs:
+  build-kernel:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve Google kernel tag
+        id: kernel
+        env:
+          GOOGLE_REF: ${{ github.event.inputs.google_ref }}
+          TAG_PATTERN: ${{ github.event.inputs.tag_pattern || 'android16-6.12.*_r*' }}
+        run: |
+          chmod +x scripts/resolve-google-kernel-ref.sh
+          args=(--pattern "$TAG_PATTERN")
+          if [ -n "$GOOGLE_REF" ]; then
+            args+=(--ref "$GOOGLE_REF")
+          fi
+          scripts/resolve-google-kernel-ref.sh "${args[@]}" | tee kernel-version.env
+          cat kernel-version.env >> "$GITHUB_ENV"
+
+      - name: Resolve release tag
+        id: release
+        env:
+          RELEASE_TAG_INPUT: ${{ github.event.inputs.release_tag }}
+          KERNEL_REF: ${{ steps.kernel.outputs.KERNEL_GIT_REF }}
+        run: |
+          if [ -n "$RELEASE_TAG_INPUT" ]; then
+            release_tag="$RELEASE_TAG_INPUT"
+          else
+            release_tag="kernel-$KERNEL_REF"
+          fi
+          echo "RELEASE_TAG=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $release_tag"
+
+      - name: Check existing kernel release
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.RELEASE_TAG }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Kernel release already exists: $RELEASE_TAG"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install host tools
+        if: steps.existing.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            adb \
+            bc \
+            bison \
+            clang \
+            cpio \
+            dosfstools \
+            e2fsprogs \
+            fdisk \
+            flex \
+            git \
+            kmod \
+            libarchive-tools \
+            libdw-dev \
+            libelf-dev \
+            libssl-dev \
+            lld \
+            llvm \
+            make \
+            patch \
+            python3 \
+            qemu-user-static \
+            systemd-container \
+            zstd
+
+      - name: Build kernel packages from Google tag
+        if: steps.existing.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          KERNEL_BUILD_BACKEND=host \
+          KERNEL_GIT_REPO="$KERNEL_GIT_REPO" \
+          KERNEL_GIT_REF="$KERNEL_GIT_REF" \
+          KERNEL_VERSION="$KERNEL_VERSION" \
+          make kernel-packages
+
+      - name: Build installable replace package
+        if: steps.existing.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          make rootfs
+          bash image/create-disk.sh
+          bash image/assemble.sh
+          make check
+
+      - name: Package kernel and replace artifacts
+        if: steps.existing.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          mkdir -p dist
+          kernel_package="arch-avf-kernel-${KERNEL_GIT_REF}.tar.gz"
+          replace_package="archlinux-avf-aarch64-replace-${KERNEL_GIT_REF}.tar.gz"
+          cp build/packages/*.pkg.tar.zst dist/
+          tar -C build/kernel -czf "dist/$kernel_package" \
+            vmlinuz \
+            kernel.release \
+            kernel.config \
+            kernel.source \
+            modules
+          cp build/arch-avf-replace.tar.gz "dist/$replace_package"
+          sha256sum dist/*.pkg.tar.zst "dist/$kernel_package" "dist/$replace_package" > "dist/SHA256SUMS"
+
+      - name: Upload kernel build artifacts
+        if: steps.existing.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-avf-kernel-${{ steps.kernel.outputs.KERNEL_GIT_REF }}
+          path: |
+            dist/arch-avf-kernel-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz
+            dist/*.pkg.tar.zst
+            dist/archlinux-avf-aarch64-replace-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz
+            dist/SHA256SUMS
+          if-no-files-found: error
+
+      - name: Create GitHub release
+        if: >
+          (steps.existing.outputs.exists != 'true' || github.event_name == 'workflow_dispatch') &&
+          (github.event_name == 'schedule' || github.event.inputs.publish_release == 'true')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.RELEASE_TAG }}
+          name: Kernel ${{ steps.kernel.outputs.KERNEL_GIT_REF }}
+          make_latest: false
+          files: |
+            dist/arch-avf-kernel-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz
+            dist/*.pkg.tar.zst
+            dist/archlinux-avf-aarch64-replace-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz
+            dist/SHA256SUMS
+          body: |
+            Google-tracked kernel build for arch-avf.
+
+            Source: `${{ steps.kernel.outputs.KERNEL_GIT_REPO }}`
+            Google ref: `${{ steps.kernel.outputs.KERNEL_GIT_REF }}`
+            Kernel version: `${{ steps.kernel.outputs.KERNEL_VERSION }}`
+            Ref SHA: `${{ steps.kernel.outputs.KERNEL_REF_SHA }}`
+
+            This workflow tracks Google's Android common kernel tags and publishes
+            a new release when the newest matching tag changes.
+
+            Installable package:
+            `archlinux-avf-aarch64-replace-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz`
+
+            Kernel-only package:
+            `arch-avf-kernel-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz`
+
+            Pacman packages:
+            `arch-avf-linux-android-*.pkg.tar.zst`
+            `arch-avf-linux-android-firmware-*.pkg.tar.zst`

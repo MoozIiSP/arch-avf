@@ -139,6 +139,11 @@ make --no-print-directory -s "${MAKE_ARGS[@]}" kernelrelease > "$OUTPUT_DIR/kern
 rm -rf "$OUTPUT_DIR/modules"
 make "${MAKE_ARGS[@]}" INSTALL_MOD_PATH="$OUTPUT_DIR/modules" modules_install
 find "$OUTPUT_DIR/modules/lib/modules" -type l \( -name build -o -name source \) -delete
+rm -rf "$OUTPUT_DIR/firmware"
+mkdir -p "$OUTPUT_DIR/firmware"
+if make -n "${MAKE_ARGS[@]}" firmware_install >/dev/null 2>&1; then
+    make "${MAKE_ARGS[@]}" INSTALL_FW_PATH="$OUTPUT_DIR/firmware/usr/lib/firmware" firmware_install
+fi
 
 # Android Terminal feeds $PAYLOAD_DIR/vmlinuz directly to crosvm, which expects
 # the raw arm64 Image header rather than a gzip stream.
@@ -275,6 +280,11 @@ make --no-print-directory -s "${MAKE_ARGS[@]}" kernelrelease > /output/kernel.re
 rm -rf /output/modules
 make "${MAKE_ARGS[@]}" INSTALL_MOD_PATH=/output/modules modules_install
 find /output/modules/lib/modules -type l \( -name build -o -name source \) -delete
+rm -rf /output/firmware
+mkdir -p /output/firmware
+if make -n "${MAKE_ARGS[@]}" firmware_install >/dev/null 2>&1; then
+    make "${MAKE_ARGS[@]}" INSTALL_FW_PATH=/output/firmware/usr/lib/firmware firmware_install
+fi
 
 # Android Terminal feeds $PAYLOAD_DIR/vmlinuz directly to crosvm, which expects
 # the raw arm64 Image header rather than a gzip stream.
