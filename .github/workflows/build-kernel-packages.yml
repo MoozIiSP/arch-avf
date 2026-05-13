@@ -1,4 +1,4 @@
-name: kernel
+name: Build Kernel Packages
 
 on:
   schedule:
@@ -35,6 +35,7 @@ concurrency:
 
 jobs:
   build-kernel:
+    name: Build kernel packages
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 240
     steps:
@@ -167,6 +168,7 @@ jobs:
         if: >
           (steps.assets.outputs.exists != 'true' || github.event_name == 'workflow_dispatch') &&
           steps.releases.outputs.PUBLISH_RELEASE == 'true'
+        id: upload-release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.releases.outputs.KERNEL_RELEASE_TAG }}
@@ -193,3 +195,31 @@ jobs:
             Pacman packages:
             `arch-avf-linux-android-*.pkg.tar.zst`
             `arch-avf-linux-android-firmware-*.pkg.tar.zst`
+
+      - name: Trigger image workflow
+        if: >
+          (steps.assets.outputs.exists != 'true' || github.event_name == 'workflow_dispatch') &&
+          steps.releases.outputs.PUBLISH_RELEASE == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KERNEL_RELEASE_TAG: ${{ steps.releases.outputs.KERNEL_RELEASE_TAG }}
+          IMAGE_RELEASE_TAG: ${{ vars.IMAGE_RELEASE_TAG }}
+          KERNEL_GIT_REF: ${{ steps.kernel.outputs.KERNEL_GIT_REF }}
+        run: |
+          python3 - <<'PY' > dispatch.json
+          import json
+          import os
+
+          payload = {
+              "kernel_release_tag": os.environ["KERNEL_RELEASE_TAG"],
+              "kernel_git_ref": os.environ["KERNEL_GIT_REF"],
+          }
+          image_release_tag = os.environ.get("IMAGE_RELEASE_TAG", "")
+          if image_release_tag:
+              payload["image_release_tag"] = image_release_tag
+          print(json.dumps({
+              "event_type": "kernel-release",
+              "client_payload": payload,
+          }))
+          PY
+          gh api -X POST "repos/$GITHUB_REPOSITORY/dispatches" --input dispatch.json

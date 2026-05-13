@@ -39,8 +39,8 @@ be used beyond local testing.
 
 Kernel and image builds are intentionally separate:
 
-1. The `kernel` workflow tracks Google's Android common kernel tags matching
-   `android16-6.12.*_r*`.
+1. The `Build Kernel Packages` workflow tracks Google's Android common kernel
+   tags matching `android16-6.12.*_r*`.
 2. It builds Arch pacman packages:
    `arch-avf-linux-android-*.pkg.tar.zst` and
    `arch-avf-linux-android-firmware-*.pkg.tar.zst`.
@@ -48,10 +48,11 @@ Kernel and image builds are intentionally separate:
    ARM `linux-aarch64` package layout: `/boot/Image`, `/boot/Image.gz`, module
    files under `/usr/lib/modules`, and an mkinitcpio preset.
 3. Those kernel packages are uploaded to an existing kernel release.
-4. The `build` workflow downloads the released kernel packages, starts from the
-   latest Arch Linux ARM aarch64 rootfs, removes the stock Arch kernel packages,
-   installs the AVF kernel packages, then installs the local `arch-avf-config`
-   package.
+4. After a successful kernel release upload, the kernel workflow dispatches
+   `kernel-release` to trigger the `Build Image` workflow. The image workflow
+   downloads the released kernel packages, starts from the latest Arch Linux ARM
+   aarch64 rootfs, removes the stock Arch kernel packages, installs the AVF
+   kernel packages, then installs the local `arch-avf-config` package.
 5. The final replace archive is uploaded to an existing image release.
 
 Kernel and image releases are separate. The workflows reuse existing releases
