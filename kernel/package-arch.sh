@@ -55,6 +55,7 @@ write_mtree() {
     (
         cd "$pkgdir"
         bsdtar -cf - --format=mtree \
+            --uid 0 --gid 0 --uname root --gname root \
             --options='!all,use-set,type,uid,gid,mode,time,size,sha256,link' \
             --exclude .MTREE \
             --exclude .PKGINFO \
@@ -71,7 +72,9 @@ make_pkg() {
     write_mtree "$pkgdir"
     (
         cd "$pkgdir"
-        bsdtar --zstd -cf "$outfile" .PKGINFO .MTREE ${INSTALL_SCRIPT:+.INSTALL} *
+        bsdtar --zstd -cf "$outfile" \
+            --uid 0 --gid 0 --uname root --gname root \
+            .PKGINFO .MTREE ${INSTALL_SCRIPT:+.INSTALL} *
     )
     printf '%s\n' "$outfile"
 }

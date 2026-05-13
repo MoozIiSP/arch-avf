@@ -4,7 +4,7 @@ PROJECT_DIR := $(CURDIR)
 BUILD_DIR := $(PROJECT_DIR)/build
 PAYLOAD_DIR := $(BUILD_DIR)/payload
 
-.PHONY: all rootfs kernel kernel-packages android-services image payload replace deploy clean distclean check check-payload
+.PHONY: all rootfs avf-config-package kernel kernel-packages android-services image payload replace deploy clean distclean check check-payload
 
 .NOTPARALLEL:
 
@@ -12,6 +12,9 @@ all: image check
 
 rootfs:
 	@bash "$(PROJECT_DIR)/rootfs/build.sh"
+
+avf-config-package:
+	@bash "$(PROJECT_DIR)/rootfs/package-arch.sh"
 
 kernel:
 	@bash "$(PROJECT_DIR)/kernel/build.sh"

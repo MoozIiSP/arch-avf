@@ -10,8 +10,8 @@ OUTPUT="$BUILD_DIR/rootfs.tar.gz"
 INITRD_OUT="$BUILD_DIR/initrd.img"
 KERNEL_PACKAGES_DIR="${KERNEL_PACKAGES_DIR:-$PROJECT_DIR/build/packages}"
 KERNEL_RELEASE_FILE="${KERNEL_RELEASE_FILE:-$PROJECT_DIR/build/kernel/kernel.release}"
+AVF_PACKAGES_DIR="${AVF_PACKAGES_DIR:-$PROJECT_DIR/build/avf-packages}"
 ANDROID_SERVICES_DIR="${ANDROID_SERVICES_DIR:-$PROJECT_DIR/build/android-services/out}"
-OVERLAY_DIR="$SCRIPT_DIR/overlay"
 
 ALARM_TARBALL_URL="${ALARM_TARBALL_URL:-http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz}"
 ROOT_PASSWORD="${ROOT_PASSWORD:-root}"
@@ -24,6 +24,9 @@ RATE_MIRRORS_URL="${RATE_MIRRORS_URL:-https://github.com/westandskif/rate-mirror
 [ -f "$KERNEL_RELEASE_FILE" ] || { echo "Missing kernel release file: $KERNEL_RELEASE_FILE. Run make kernel-packages first." >&2; exit 1; }
 compgen -G "$KERNEL_PACKAGES_DIR/*.pkg.tar.zst" >/dev/null || { echo "Missing kernel pacman packages: $KERNEL_PACKAGES_DIR/*.pkg.tar.zst. Run make kernel-packages first." >&2; exit 1; }
 
+bash "$SCRIPT_DIR/package-arch.sh"
+compgen -G "$AVF_PACKAGES_DIR/*.pkg.tar.zst" >/dev/null || { echo "Missing AVF config pacman package: $AVF_PACKAGES_DIR/*.pkg.tar.zst" >&2; exit 1; }
+
 mkdir -p "$BUILD_DIR" "$CACHE_DIR" "$ANDROID_SERVICES_DIR"
 
 echo "==> Building rootfs helper image"
@@ -34,9 +37,9 @@ podman run --rm -i --privileged --platform linux/arm64 \
     -v "$BUILD_DIR:/build" \
     -v "$SCRIPT_DIR/packages.txt:/packages.txt:ro" \
     -v "$KERNEL_PACKAGES_DIR:/kernel_packages_src:ro" \
+    -v "$AVF_PACKAGES_DIR:/avf_packages_src:ro" \
     -v "$KERNEL_RELEASE_FILE:/kernel_release:ro" \
     -v "$ANDROID_SERVICES_DIR:/android-services:ro" \
-    -v "$OVERLAY_DIR:/overlay:ro" \
     -e ALARM_TARBALL_URL="$ALARM_TARBALL_URL" \
     -e ROOT_PASSWORD="$ROOT_PASSWORD" \
     -e DROID_USER="$DROID_USER" \
@@ -67,6 +70,8 @@ printf '%s  %s\n' "$RATE_MIRRORS_SHA256" "$RATE_MIRRORS_TARBALL" | sha256sum -c 
 bsdtar -xpf "$TARBALL" -C "$ROOTFS_DIR"
 mkdir -p "$ROOTFS_DIR/kernel_packages"
 cp -a /kernel_packages_src/*.pkg.tar.zst "$ROOTFS_DIR/kernel_packages/"
+mkdir -p "$ROOTFS_DIR/avf_packages"
+cp -a /avf_packages_src/*.pkg.tar.zst "$ROOTFS_DIR/avf_packages/"
 
 rm -f "$ROOTFS_DIR/etc/resolv.conf"
 install -Dm644 /etc/resolv.conf "$ROOTFS_DIR/etc/resolv.conf"
@@ -103,7 +108,7 @@ pacman-key --populate archlinuxarm
 pacman -Rns --noconfirm linux-aarch64 linux-firmware || true
 pacman_retry -Syu --noconfirm
 pacman_retry -S --needed --noconfirm $PACKAGES
-pacman -U --noconfirm /kernel_packages/*.pkg.tar.zst
+pacman -U --noconfirm /kernel_packages/*.pkg.tar.zst /avf_packages/*.pkg.tar.zst
 ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 echo archlinux > /etc/hostname
 printf 'root:%s\n' "$ROOT_PASSWORD" | chpasswd
@@ -143,8 +148,8 @@ CHROOT
 
 rm -rf "$ROOTFS_DIR/var/cache/pacman/pkg/"*
 rm -rf "$ROOTFS_DIR/kernel_packages"
+rm -rf "$ROOTFS_DIR/avf_packages"
 
-cp -a /overlay/. "$ROOTFS_DIR/"
 rate_mirrors_extract="$(mktemp -d)"
 bsdtar -xpf "$RATE_MIRRORS_TARBALL" -C "$rate_mirrors_extract"
 install -Dm755 "$rate_mirrors_extract"/*/rate_mirrors "$ROOTFS_DIR/usr/local/bin/rate-mirrors"
@@ -247,6 +252,11 @@ systemctl enable \
     storage_balloon_agent.service \
     forwarder_guest_launcher.service \
     shutdown_runner.service \
+    attach-cidata.service \
+    cloud-init-local.service \
+    cloud-init.service \
+    cloud-config.service \
+    cloud-final.service \
     ttyd.service \
     ttyd_uds.service \
     ttyd_vsock_bridge.service \

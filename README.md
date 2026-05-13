@@ -78,6 +78,7 @@ Useful targets:
 ```bash
 make kernel            # Cross-compile aarch64 Linux kernel and modules
 make kernel-packages   # Build Arch pacman packages for the kernel and firmware
+make avf-config-package # Build the Arch pacman package for AVF guest config
 make rootfs            # Build Arch Linux ARM rootfs and initrd.img
 make image             # Create root_part, payload dir, and the replace package
 make payload           # Refresh build/payload only, without packaging tarballs
@@ -94,6 +95,7 @@ build/initrd.img
 build/kernel/vmlinuz
 build/kernel/modules/
 build/packages/*.pkg.tar.zst
+build/avf-packages/*.pkg.tar.zst
 build/image/root_part
 build/payload/
 build/arch-avf-replace.tar.gz
@@ -134,7 +136,9 @@ The image workflow runs monthly and downloads the kernel package artifacts from
 the existing kernel release instead of rebuilding the kernel. The rootfs build
 uses the Arch Linux ARM latest aarch64 rootfs tarball only as the base userspace:
 it removes the stock `linux-aarch64`/`linux-firmware` packages and installs the
-AVF kernel pacman packages with `pacman -U`, so kernel updates can be shipped
+AVF kernel pacman packages plus the local `arch-avf-config` pacman package with
+`pacman -U`. The config package owns the AVF guest services, cloud-init config,
+debug hooks, ttyd wiring, and first-boot setup, so kernel updates can be shipped
 independently from full image rebuilds.
 
 ## Deploy
