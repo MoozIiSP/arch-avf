@@ -123,9 +123,10 @@ KERNEL_BASE_CONFIG=android_avf
 
 The `kernel` GitHub Actions workflow tracks Google's Android common kernel tags
 matching `android16-6.12.*_r*`. It runs daily and can also be started manually;
-when a newer Google tag appears, it publishes a `kernel-<google-ref>` release
-with kernel/firmware pacman packages, a kernel-only archive, and a production
-`replace` install package. The rootfs build installs the generated pacman
+when a newer Google tag appears, it uploads kernel/firmware pacman packages to
+an existing kernel release and uploads the production `replace` package to an
+existing image release. The two release tags are separate, and the workflow
+does not create releases. The rootfs build installs the generated pacman
 packages with `pacman -U`, so kernel updates can be shipped independently from
 full image rebuilds.
 

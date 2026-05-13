@@ -60,22 +60,29 @@ jobs:
       - name: Package payload
         run: |
           cp build/arch-avf-replace.tar.gz archlinux-avf-aarch64-replace.tar.gz
-          cp build/packages/*.pkg.tar.zst .
           sha256sum archlinux-avf-aarch64-replace.tar.gz > archlinux-avf-aarch64-replace.tar.gz.sha256
-          sha256sum *.pkg.tar.zst > archlinux-avf-kernel-packages.sha256
 
-      - name: Create GitHub release
+      - name: Check existing release
+        if: startsWith(github.ref, 'refs/tags/v') || (startsWith(github.ref, 'refs/tags/archlinux-') && !contains(github.ref, 'before-'))
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Missing existing release: $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+      - name: Upload image release assets
         if: startsWith(github.ref, 'refs/tags/v') || (startsWith(github.ref, 'refs/tags/archlinux-') && !contains(github.ref, 'before-'))
         uses: softprops/action-gh-release@v2
         with:
           files: |
             archlinux-avf-aarch64-replace.tar.gz
             archlinux-avf-aarch64-replace.tar.gz.sha256
-            *.pkg.tar.zst
-            archlinux-avf-kernel-packages.sha256
           body: |
             Arch Linux ARM image for Android 16 AVF Terminal app.
 
-            This release publishes the production `replace` package and the Arch pacman kernel/firmware packages. The kernel is built from Android common kernel `android16-6.12.77_r00` by default.
+            This release publishes the production `replace` package only. The kernel is built from Android common kernel `android16-6.12.77_r00` by default.
 
             Production/user builds: install Google's Debian Terminal image first, extract `archlinux-avf-aarch64-replace.tar.gz` to `Download/image`, then run `bash /mnt/shared/Download/image/replace.sh` inside Terminal. Terminal will reboot; reopen it and let the script finish the second stage.
