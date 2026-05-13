@@ -1,0 +1,106 @@
+# Maintainer: arch-avf contributors
+
+pkgbase=${KERNEL_ARCH_PKGBASE:-arch-avf-linux-android}
+_desc="Android common kernel for Arch AVF"
+pkgver=${KERNEL_ARCH_PKGVER:-6.12.77_android16_6.12.77_r00}
+pkgrel=${KERNEL_ARCH_PKGREL:-1}
+arch=('aarch64')
+url='https://github.com/MoozIiSP/arch-avf'
+license=('GPL-2.0-only')
+makedepends=('kmod')
+options=('!strip')
+source=('linux.preset'
+        'linux.install')
+sha256sums=('SKIP'
+            'SKIP')
+
+_kernel_build_dir() {
+  printf '%s\n' "${KERNEL_BUILD_DIR:-${startdir:-$PWD}/../build/kernel}"
+}
+
+_kernel_release() {
+  cat "$(_kernel_build_dir)/kernel.release"
+}
+
+_check_build_outputs() {
+  local builddir="$(_kernel_build_dir)"
+  test -s "$builddir/vmlinuz"
+  test -s "$builddir/kernel.release"
+  test -s "$builddir/kernel.config"
+  test -s "$builddir/kernel.source"
+  test -d "$builddir/modules/lib/modules"
+}
+
+_package() {
+  pkgdesc="The Linux Kernel and modules - ${_desc}"
+  depends=('coreutils' 'kmod' 'mkinitcpio>=0.7')
+  optdepends=('linux-firmware: firmware images needed for some devices')
+  provides=("linux=${pkgver}" "linux-aarch64=${pkgver}")
+  conflicts=('linux' 'linux-aarch64')
+  install=linux.install
+
+  _check_build_outputs
+
+  local builddir="$(_kernel_build_dir)"
+  local kernver="$(_kernel_release)"
+  local modulesdir="$pkgdir/usr/lib/modules/$kernver"
+
+  echo "Installing boot image..."
+  install -Dm644 "$builddir/vmlinuz" "$pkgdir/boot/Image"
+  install -Dm644 "$builddir/vmlinuz" "$pkgdir/boot/vmlinuz-$pkgbase"
+  install -Dm644 "$builddir/vmlinuz" "$modulesdir/vmlinuz"
+  if [[ -s "$builddir/Image.gz" ]]; then
+    install -Dm644 "$builddir/Image.gz" "$pkgdir/boot/Image.gz"
+  fi
+
+  echo "Installing modules..."
+  cp -a "$builddir/modules/lib/modules/." "$pkgdir/usr/lib/modules/"
+  rm -f "$modulesdir"/build "$modulesdir"/source
+
+  echo "$pkgbase" > "$modulesdir/pkgbase"
+  install -Dm644 "$builddir/kernel.config" "$modulesdir/config"
+  install -Dm644 "$builddir/kernel.config" "$pkgdir/usr/share/$pkgbase/config"
+  install -Dm644 "$builddir/kernel.source" "$pkgdir/usr/share/$pkgbase/source"
+  echo "$kernver" > "$pkgdir/usr/share/$pkgbase/kernel.release"
+
+  local _subst="
+    s|%PKGBASE%|${pkgbase}|g
+    s|%KERNVER%|${kernver}|g
+  "
+  sed "${_subst}" "$srcdir/linux.preset" |
+    install -Dm644 /dev/stdin "$pkgdir/etc/mkinitcpio.d/$pkgbase.preset"
+
+  install -d "$pkgdir/usr/lib/initcpio"
+  echo "dummy file to trigger mkinitcpio to run" > "$pkgdir/usr/lib/initcpio/$kernver"
+}
+
+_package-firmware() {
+  pkgdesc="Firmware from Android common Linux for Arch AVF"
+  provides=('linux-firmware')
+  conflicts=('linux-firmware')
+
+  _check_build_outputs
+
+  local builddir="$(_kernel_build_dir)"
+  local kernver="$(_kernel_release)"
+  install -d "$pkgdir/usr/lib/firmware" "$pkgdir/usr/share/$pkgbase-firmware"
+  if [[ -d "$builddir/firmware/usr/lib/firmware" ]]; then
+    cp -a "$builddir/firmware/usr/lib/firmware/." "$pkgdir/usr/lib/firmware/"
+  fi
+  install -Dm644 "$builddir/kernel.source" "$pkgdir/usr/share/$pkgbase-firmware/source"
+  cat > "$pkgdir/usr/share/$pkgbase-firmware/README" <<EOF
+Firmware files installed from the Android common Linux source tree.
+
+Kernel release: $kernver
+EOF
+}
+
+pkgname=("$pkgbase" "$pkgbase-firmware")
+for _p in "${pkgname[@]}"; do
+  eval "package_${_p}() {
+    $(declare -f "_package${_p#$pkgbase}")
+    _package${_p#$pkgbase}
+  }"
+done
+
+# vim:set ts=8 sts=2 sw=2 et:

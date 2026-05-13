@@ -1,0 +1,10 @@
+post_upgrade() {
+  if findmnt --fstab -uno SOURCE /boot >/dev/null 2>&1 && ! mountpoint -q /boot; then
+    echo "WARNING: /boot appears to be a separate partition but is not mounted."
+  fi
+}
+
+post_remove() {
+  rm -f boot/initramfs-arch-avf-linux-android.img
+  rm -f boot/initramfs-arch-avf-linux-android-fallback.img
+}

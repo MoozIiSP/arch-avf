@@ -11,6 +11,8 @@ PKGREL="${KERNEL_ARCH_PKGREL:-1}"
 PKGARCH="${KERNEL_ARCH_PKGARCH:-aarch64}"
 PACKAGER="${KERNEL_ARCH_PACKAGER:-arch-avf}"
 URL="${KERNEL_ARCH_URL:-https://github.com/MoozIiSP/arch-avf}"
+PRESET_TEMPLATE="$SCRIPT_DIR/linux.preset"
+INSTALL_TEMPLATE="$SCRIPT_DIR/linux.install"
 
 require_file() {
     local path="$1"
@@ -83,6 +85,9 @@ require_file "$KERNEL_BUILD_DIR/vmlinuz"
 require_file "$KERNEL_BUILD_DIR/kernel.release"
 require_file "$KERNEL_BUILD_DIR/kernel.config"
 require_file "$KERNEL_BUILD_DIR/kernel.source"
+require_file "$SCRIPT_DIR/PKGBUILD"
+require_file "$PRESET_TEMPLATE"
+require_file "$INSTALL_TEMPLATE"
 [ -d "$KERNEL_BUILD_DIR/modules/lib/modules" ] || {
     echo "Missing kernel modules: $KERNEL_BUILD_DIR/modules/lib/modules" >&2
     exit 1
@@ -126,35 +131,12 @@ cp "$KERNEL_BUILD_DIR/kernel.source" "$kernel_pkgdir/usr/share/$kernel_pkgname/s
 printf '%s\n' "$KERNEL_RELEASE" > "$kernel_pkgdir/usr/share/$kernel_pkgname/kernel.release"
 printf '%s\n' "$kernel_pkgname" > "$modulesdir/pkgbase"
 cp "$KERNEL_BUILD_DIR/kernel.config" "$modulesdir/config"
-cat > "$kernel_pkgdir/etc/mkinitcpio.d/$kernel_pkgname.preset" <<EOF
-# mkinitcpio preset file for the '$kernel_pkgname' package
-
-#ALL_config="/etc/mkinitcpio.conf"
-ALL_kver="$KERNEL_RELEASE"
-
-PRESETS=('default' 'fallback')
-
-#default_config="/etc/mkinitcpio.conf"
-default_image="/boot/initramfs-$kernel_pkgname.img"
-#default_options=""
-
-#fallback_config="/etc/mkinitcpio.conf"
-fallback_image="/boot/initramfs-$kernel_pkgname-fallback.img"
-fallback_options="-S autodetect"
-EOF
+sed \
+    -e "s|%PKGBASE%|$kernel_pkgname|g" \
+    -e "s|%KERNVER%|$KERNEL_RELEASE|g" \
+    "$PRESET_TEMPLATE" > "$kernel_pkgdir/etc/mkinitcpio.d/$kernel_pkgname.preset"
 printf 'dummy file to trigger mkinitcpio to run\n' > "$kernel_pkgdir/usr/lib/initcpio/$KERNEL_RELEASE"
-cat > "$kernel_pkgdir/.INSTALL" <<EOF
-post_upgrade() {
-  if findmnt --fstab -uno SOURCE /boot >/dev/null 2>&1 && ! mountpoint -q /boot; then
-    echo "WARNING: /boot appears to be a separate partition but is not mounted."
-  fi
-}
-
-post_remove() {
-  rm -f boot/initramfs-$kernel_pkgname.img
-  rm -f boot/initramfs-$kernel_pkgname-fallback.img
-}
-EOF
+cp "$INSTALL_TEMPLATE" "$kernel_pkgdir/.INSTALL"
 INSTALL_SCRIPT=1
 write_pkginfo "$kernel_pkgdir" "$kernel_pkgname" \
     "Android common Linux kernel for Arch AVF" \

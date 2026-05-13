@@ -44,9 +44,9 @@ Kernel and image builds are intentionally separate:
 2. It builds Arch pacman packages:
    `arch-avf-linux-android-*.pkg.tar.zst` and
    `arch-avf-linux-android-firmware-*.pkg.tar.zst`.
-   The kernel package follows the Arch Linux ARM `linux-aarch64` package layout:
-   `/boot/Image`, `/boot/Image.gz`, module files under `/usr/lib/modules`, and
-   an mkinitcpio preset.
+   The kernel package is defined by `kernel/PKGBUILD` and follows the Arch Linux
+   ARM `linux-aarch64` package layout: `/boot/Image`, `/boot/Image.gz`, module
+   files under `/usr/lib/modules`, and an mkinitcpio preset.
 3. Those kernel packages are uploaded to an existing kernel release.
 4. The `build` workflow downloads the released kernel packages, starts from the
    latest Arch Linux ARM aarch64 rootfs, removes the stock Arch kernel packages,
