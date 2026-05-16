@@ -92,6 +92,10 @@ require_file "$INSTALL_TEMPLATE"
     echo "Missing kernel modules: $KERNEL_BUILD_DIR/modules/lib/modules" >&2
     exit 1
 }
+[ -d "$KERNEL_BUILD_DIR/headers/usr/lib/modules" ] || {
+    echo "Missing kernel headers: $KERNEL_BUILD_DIR/headers/usr/lib/modules" >&2
+    exit 1
+}
 command -v bsdtar >/dev/null || {
     echo "Missing bsdtar. Install libarchive-tools." >&2
     exit 1
@@ -145,34 +149,29 @@ write_pkginfo "$kernel_pkgdir" "$kernel_pkgname" \
     "depend = kmod" \
     "depend = mkinitcpio>=0.7" \
     "optdepend = mkinitcpio: initramfs generation" \
-    "optdepend = linux-firmware: firmware images needed for some devices" \
     "provides = linux=$PKGVER" \
     "provides = linux-aarch64=$PKGVER" \
     "conflict = linux" \
     "conflict = linux-aarch64"
 kernel_pkg="$(make_pkg "$kernel_pkgdir" "$kernel_pkgname")"
 
-firmware_pkgname="$PKGBASE-firmware"
-firmware_pkgdir="$PACKAGE_BUILD_DIR/$firmware_pkgname"
-install -d "$firmware_pkgdir/usr/lib/firmware" "$firmware_pkgdir/usr/share/$firmware_pkgname"
-if [ -d "$KERNEL_BUILD_DIR/firmware/usr/lib/firmware" ]; then
-    cp -a "$KERNEL_BUILD_DIR/firmware/usr/lib/firmware/." "$firmware_pkgdir/usr/lib/firmware/"
-fi
-cp "$KERNEL_BUILD_DIR/kernel.source" "$firmware_pkgdir/usr/share/$firmware_pkgname/source"
-cat > "$firmware_pkgdir/usr/share/$firmware_pkgname/README" <<EOF
-Firmware files installed from the Android common Linux source tree.
-
-Source: $KERNEL_GIT_REPO
-Ref: $KERNEL_GIT_REF
-Kernel release: $KERNEL_RELEASE
-EOF
+headers_pkgname="$PKGBASE-headers"
+headers_pkgdir="$PACKAGE_BUILD_DIR/$headers_pkgname"
+install -d "$headers_pkgdir/usr/lib/modules"
+cp -a "$KERNEL_BUILD_DIR/headers/usr/lib/modules/." "$headers_pkgdir/usr/lib/modules/"
+install -d "$headers_pkgdir/usr/share/$headers_pkgname"
+cp "$KERNEL_BUILD_DIR/kernel.source" "$headers_pkgdir/usr/share/$headers_pkgname/source"
+printf '%s\n' "$KERNEL_RELEASE" > "$headers_pkgdir/usr/share/$headers_pkgname/kernel.release"
 INSTALL_SCRIPT=
-write_pkginfo "$firmware_pkgdir" "$firmware_pkgname" \
-    "Firmware from Android common Linux for Arch AVF" \
-    "$(dir_size "$firmware_pkgdir")" \
-    "provides = linux-firmware" \
-    "conflict = linux-firmware"
-firmware_pkg="$(make_pkg "$firmware_pkgdir" "$firmware_pkgname")"
+write_pkginfo "$headers_pkgdir" "$headers_pkgname" \
+    "Headers and scripts for building modules for the Arch AVF kernel" \
+    "$(dir_size "$headers_pkgdir")" \
+    "depend = pahole" \
+    "provides = linux-headers=$PKGVER" \
+    "provides = linux-aarch64-headers=$PKGVER" \
+    "conflict = linux-headers" \
+    "conflict = linux-aarch64-headers"
+headers_pkg="$(make_pkg "$headers_pkgdir" "$headers_pkgname")"
 
-sha256sum "$kernel_pkg" "$firmware_pkg" > "$PACKAGE_OUT_DIR/SHA256SUMS"
-ls -lh "$kernel_pkg" "$firmware_pkg" "$PACKAGE_OUT_DIR/SHA256SUMS"
+sha256sum "$kernel_pkg" "$headers_pkg" > "$PACKAGE_OUT_DIR/SHA256SUMS"
+ls -lh "$kernel_pkg" "$headers_pkg" "$PACKAGE_OUT_DIR/SHA256SUMS"

@@ -85,27 +85,31 @@ jobs:
           KERNEL_RELEASE_TAG: ${{ steps.inputs.outputs.KERNEL_RELEASE_TAG }}
         run: |
           gh release view "$KERNEL_RELEASE_TAG" >/dev/null
-          mkdir -p build/kernel-download build/kernel build/packages
-          gh release download "$KERNEL_RELEASE_TAG" \
-            --pattern 'arch-avf-kernel-*.tar.gz' \
-            --dir build/kernel-download \
-            --clobber
+          mkdir -p build/kernel build/packages
           gh release download "$KERNEL_RELEASE_TAG" \
             --pattern '*.pkg.tar.zst' \
             --dir build/packages \
             --clobber
-          kernel_archive="$(find build/kernel-download -maxdepth 1 -name 'arch-avf-kernel-*.tar.gz' | sort | tail -n 1)"
-          [ -n "$kernel_archive" ] || { echo "Missing arch-avf-kernel tarball in $KERNEL_RELEASE_TAG" >&2; exit 1; }
-          tar -C build/kernel -xzf "$kernel_archive"
+          kernel_pkg="$(find build/packages -maxdepth 1 -name 'arch-avf-linux-android-[0-9]*.pkg.tar.zst' | sort | tail -n 1)"
+          [ -n "$kernel_pkg" ] || { echo "Missing arch-avf-linux-android pacman package in $KERNEL_RELEASE_TAG" >&2; exit 1; }
+          rm -rf build/kernel-pkg
+          mkdir -p build/kernel-pkg
+          bsdtar -xf "$kernel_pkg" -C build/kernel-pkg
+          cp build/kernel-pkg/boot/vmlinuz-arch-avf-linux-android build/kernel/vmlinuz
+          cp build/kernel-pkg/boot/Image.gz build/kernel/Image.gz
+          cp build/kernel-pkg/usr/share/arch-avf-linux-android/kernel.release build/kernel/kernel.release
+          cp build/kernel-pkg/usr/share/arch-avf-linux-android/config build/kernel/kernel.config
+          cp build/kernel-pkg/usr/share/arch-avf-linux-android/source build/kernel/kernel.source
+          mkdir -p build/kernel/modules/lib
+          cp -a build/kernel-pkg/usr/lib/modules build/kernel/modules/lib/
           test -s build/kernel/vmlinuz
           test -s build/kernel/kernel.release
           test -s build/kernel/kernel.source
           test -d build/kernel/modules/lib/modules
           compgen -G 'build/packages/*.pkg.tar.zst' >/dev/null
-          # Kernel releases are reused, so they can contain packages for older
-          # Android common tags. Keep only the pacman packages matching the
-          # kernel tarball selected above; pacman rejects multiple versions of
-          # the same package in a single transaction as duplicate targets.
+          # Kernel releases are reused, so they can contain older package names
+          # when a previous cleanup failed. Keep only the pacman packages
+          # matching the kernel package selected above.
           # shellcheck disable=SC1091
           source build/kernel/kernel.source
           kernel_pkgver="$(printf '%s' "${KERNEL_VERSION}_${KERNEL_GIT_REF}" | sed 's/[^A-Za-z0-9_+.]/_/g')"
@@ -150,6 +154,6 @@ jobs:
           body: |
             Arch Linux ARM image for Android 16 AVF Terminal app.
 
-            This release publishes the production `replace` package only. The kernel is built from Android common kernel `android16-6.12.77_r00` by default.
+            This release publishes the production `replace` package only. Kernel pacman packages are published separately in the configured kernel release.
 
             Production/user builds: install Google's Debian Terminal image first, extract `archlinux-avf-aarch64-replace.tar.gz` to `Download/image`, then run `bash /mnt/shared/Download/image/replace.sh` inside Terminal. Terminal will reboot; reopen it and let the script finish the second stage.

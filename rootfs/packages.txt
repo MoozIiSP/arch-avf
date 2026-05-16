@@ -26,6 +26,7 @@ weston
 libdrm
 seatd
 pulseaudio
+pahole
 procps-ng
 man-db
 man-pages

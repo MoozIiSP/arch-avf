@@ -91,8 +91,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           KERNEL_RELEASE_TAG: ${{ steps.releases.outputs.KERNEL_RELEASE_TAG }}
-          KERNEL_ASSET: arch-avf-kernel-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz
+          KERNEL_VERSION: ${{ steps.kernel.outputs.KERNEL_VERSION }}
+          KERNEL_GIT_REF: ${{ steps.kernel.outputs.KERNEL_GIT_REF }}
         run: |
+          kernel_pkgver="$(printf '%s' "${KERNEL_VERSION}_${KERNEL_GIT_REF}" | sed 's/[^A-Za-z0-9_+.]/_/g')"
+          KERNEL_ASSET="arch-avf-linux-android-${kernel_pkgver}-1-aarch64.pkg.tar.zst"
           if gh release view "$KERNEL_RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fx "$KERNEL_ASSET" >/dev/null; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "Kernel assets already exist for $KERNEL_ASSET"
@@ -142,16 +145,8 @@ jobs:
         if: steps.assets.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
         run: |
           mkdir -p dist
-          kernel_package="arch-avf-kernel-${KERNEL_GIT_REF}.tar.gz"
           cp build/packages/*.pkg.tar.zst dist/
-          tar -C build/kernel -czf "dist/$kernel_package" \
-            vmlinuz \
-            Image.gz \
-            kernel.release \
-            kernel.config \
-            kernel.source \
-            modules
-          sha256sum dist/*.pkg.tar.zst "dist/$kernel_package" > "dist/SHA256SUMS.kernel"
+          sha256sum dist/*.pkg.tar.zst > "dist/SHA256SUMS.kernel"
 
       - name: Prune kernel release assets
         if: steps.releases.outputs.PUBLISH_RELEASE == 'true'
@@ -163,14 +158,13 @@ jobs:
           REBUILD_KERNEL_ASSETS: ${{ steps.assets.outputs.exists != 'true' || github.event_name == 'workflow_dispatch' }}
         run: |
           kernel_pkgver="$(printf '%s' "${KERNEL_VERSION}_${KERNEL_GIT_REF}" | sed 's/[^A-Za-z0-9_+.]/_/g')"
-          current_kernel_asset="arch-avf-kernel-${KERNEL_GIT_REF}.tar.gz"
           current_kernel_pkg="arch-avf-linux-android-${kernel_pkgver}-1-aarch64.pkg.tar.zst"
-          current_firmware_pkg="arch-avf-linux-android-firmware-${kernel_pkgver}-1-aarch64.pkg.tar.zst"
+          current_headers_pkg="arch-avf-linux-android-headers-${kernel_pkgver}-1-aarch64.pkg.tar.zst"
 
           gh release view "$KERNEL_RELEASE_TAG" --json assets --jq '.assets[].name' |
             while IFS= read -r asset; do
               case "$asset" in
-                "$current_kernel_asset"|"$current_kernel_pkg"|"$current_firmware_pkg")
+                "$current_kernel_pkg"|"$current_headers_pkg")
                   if [ "$REBUILD_KERNEL_ASSETS" = "true" ]; then
                     gh release delete-asset "$KERNEL_RELEASE_TAG" "$asset" --yes
                   fi
@@ -190,9 +184,8 @@ jobs:
         if: steps.assets.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: arch-avf-kernel-${{ steps.kernel.outputs.KERNEL_GIT_REF }}
+          name: arch-avf-kernel-packages-${{ steps.kernel.outputs.KERNEL_GIT_REF }}
           path: |
-            dist/arch-avf-kernel-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz
             dist/*.pkg.tar.zst
             dist/SHA256SUMS.kernel
           if-no-files-found: error
@@ -208,7 +201,6 @@ jobs:
           name: Kernel ${{ steps.kernel.outputs.KERNEL_GIT_REF }}
           make_latest: false
           files: |
-            dist/arch-avf-kernel-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz
             dist/*.pkg.tar.zst
             dist/SHA256SUMS.kernel
           body: |
@@ -222,12 +214,9 @@ jobs:
             This workflow tracks Google's Android common kernel tags and publishes
             kernel pacman packages to an existing release.
 
-            Kernel-only package:
-            `arch-avf-kernel-${{ steps.kernel.outputs.KERNEL_GIT_REF }}.tar.gz`
-
             Pacman packages:
             `arch-avf-linux-android-*.pkg.tar.zst`
-            `arch-avf-linux-android-firmware-*.pkg.tar.zst`
+            `arch-avf-linux-android-headers-*.pkg.tar.zst`
 
       - name: Trigger image workflow
         if: >

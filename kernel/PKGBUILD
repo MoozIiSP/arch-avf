@@ -29,12 +29,12 @@ _check_build_outputs() {
   test -s "$builddir/kernel.config"
   test -s "$builddir/kernel.source"
   test -d "$builddir/modules/lib/modules"
+  test -d "$builddir/headers/usr/lib/modules"
 }
 
 _package() {
   pkgdesc="The Linux Kernel and modules - ${_desc}"
   depends=('coreutils' 'kmod' 'mkinitcpio>=0.7')
-  optdepends=('linux-firmware: firmware images needed for some devices')
   provides=("linux=${pkgver}" "linux-aarch64=${pkgver}")
   conflicts=('linux' 'linux-aarch64')
   install=linux.install
@@ -74,28 +74,23 @@ _package() {
   echo "dummy file to trigger mkinitcpio to run" > "$pkgdir/usr/lib/initcpio/$kernver"
 }
 
-_package-firmware() {
-  pkgdesc="Firmware from Android common Linux for Arch AVF"
-  provides=('linux-firmware')
-  conflicts=('linux-firmware')
+_package-headers() {
+  pkgdesc="Headers and scripts for building modules for the Arch AVF kernel"
+  depends=('pahole')
+  provides=("linux-headers=${pkgver}" "linux-aarch64-headers=${pkgver}")
+  conflicts=('linux-headers' 'linux-aarch64-headers')
 
   _check_build_outputs
 
   local builddir="$(_kernel_build_dir)"
   local kernver="$(_kernel_release)"
-  install -d "$pkgdir/usr/lib/firmware" "$pkgdir/usr/share/$pkgbase-firmware"
-  if [[ -d "$builddir/firmware/usr/lib/firmware" ]]; then
-    cp -a "$builddir/firmware/usr/lib/firmware/." "$pkgdir/usr/lib/firmware/"
-  fi
-  install -Dm644 "$builddir/kernel.source" "$pkgdir/usr/share/$pkgbase-firmware/source"
-  cat > "$pkgdir/usr/share/$pkgbase-firmware/README" <<EOF
-Firmware files installed from the Android common Linux source tree.
-
-Kernel release: $kernver
-EOF
+  install -d "$pkgdir/usr/lib/modules" "$pkgdir/usr/share/$pkgbase-headers"
+  cp -a "$builddir/headers/usr/lib/modules/." "$pkgdir/usr/lib/modules/"
+  install -Dm644 "$builddir/kernel.source" "$pkgdir/usr/share/$pkgbase-headers/source"
+  echo "$kernver" > "$pkgdir/usr/share/$pkgbase-headers/kernel.release"
 }
 
-pkgname=("$pkgbase" "$pkgbase-firmware")
+pkgname=("$pkgbase" "$pkgbase-headers")
 for _p in "${pkgname[@]}"; do
   eval "package_${_p}() {
     $(declare -f "_package${_p#$pkgbase}")

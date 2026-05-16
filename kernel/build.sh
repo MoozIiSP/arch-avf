@@ -136,14 +136,24 @@ do
 done
 make -j"$(nproc)" "${MAKE_ARGS[@]}" Image Image.gz modules
 make --no-print-directory -s "${MAKE_ARGS[@]}" kernelrelease > "$OUTPUT_DIR/kernel.release"
+KERNEL_RELEASE="$(cat "$OUTPUT_DIR/kernel.release")"
 rm -rf "$OUTPUT_DIR/modules"
 make "${MAKE_ARGS[@]}" INSTALL_MOD_PATH="$OUTPUT_DIR/modules" modules_install
 find "$OUTPUT_DIR/modules/lib/modules" -type l \( -name build -o -name source \) -delete
-rm -rf "$OUTPUT_DIR/firmware"
-mkdir -p "$OUTPUT_DIR/firmware"
-if make -n "${MAKE_ARGS[@]}" firmware_install >/dev/null 2>&1; then
-    make "${MAKE_ARGS[@]}" INSTALL_FW_PATH="$OUTPUT_DIR/firmware/usr/lib/firmware" firmware_install
-fi
+
+rm -rf "$OUTPUT_DIR/headers"
+headers_dir="$OUTPUT_DIR/headers/usr/lib/modules/$KERNEL_RELEASE/build"
+mkdir -p "$headers_dir"
+tar -cf - \
+    --exclude='.git' \
+    --exclude='*.o' \
+    --exclude='*.ko' \
+    --exclude='*.mod' \
+    --exclude='*.mod.c' \
+    --exclude='vmlinux' \
+    --exclude='System.map' \
+    Makefile Kconfig Module.symvers .config include scripts arch/arm64 |
+    tar -C "$headers_dir" -xf -
 
 # Android Terminal feeds $PAYLOAD_DIR/vmlinuz directly to crosvm, which expects
 # the raw arm64 Image header rather than a gzip stream.
@@ -278,14 +288,24 @@ do
 done
 make -j"$(nproc)" "${MAKE_ARGS[@]}" Image Image.gz modules
 make --no-print-directory -s "${MAKE_ARGS[@]}" kernelrelease > /output/kernel.release
+KERNEL_RELEASE="$(cat /output/kernel.release)"
 rm -rf /output/modules
 make "${MAKE_ARGS[@]}" INSTALL_MOD_PATH=/output/modules modules_install
 find /output/modules/lib/modules -type l \( -name build -o -name source \) -delete
-rm -rf /output/firmware
-mkdir -p /output/firmware
-if make -n "${MAKE_ARGS[@]}" firmware_install >/dev/null 2>&1; then
-    make "${MAKE_ARGS[@]}" INSTALL_FW_PATH=/output/firmware/usr/lib/firmware firmware_install
-fi
+
+rm -rf /output/headers
+headers_dir="/output/headers/usr/lib/modules/$KERNEL_RELEASE/build"
+mkdir -p "$headers_dir"
+tar -cf - \
+    --exclude='.git' \
+    --exclude='*.o' \
+    --exclude='*.ko' \
+    --exclude='*.mod' \
+    --exclude='*.mod.c' \
+    --exclude='vmlinux' \
+    --exclude='System.map' \
+    Makefile Kconfig Module.symvers .config include scripts arch/arm64 |
+    tar -C "$headers_dir" -xf -
 
 # Android Terminal feeds $PAYLOAD_DIR/vmlinuz directly to crosvm, which expects
 # the raw arm64 Image header rather than a gzip stream.
