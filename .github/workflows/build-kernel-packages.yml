@@ -153,6 +153,39 @@ jobs:
             modules
           sha256sum dist/*.pkg.tar.zst "dist/$kernel_package" > "dist/SHA256SUMS.kernel"
 
+      - name: Prune kernel release assets
+        if: steps.releases.outputs.PUBLISH_RELEASE == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KERNEL_RELEASE_TAG: ${{ steps.releases.outputs.KERNEL_RELEASE_TAG }}
+          KERNEL_GIT_REF: ${{ steps.kernel.outputs.KERNEL_GIT_REF }}
+          KERNEL_VERSION: ${{ steps.kernel.outputs.KERNEL_VERSION }}
+          REBUILD_KERNEL_ASSETS: ${{ steps.assets.outputs.exists != 'true' || github.event_name == 'workflow_dispatch' }}
+        run: |
+          kernel_pkgver="$(printf '%s' "${KERNEL_VERSION}_${KERNEL_GIT_REF}" | sed 's/[^A-Za-z0-9_+.]/_/g')"
+          current_kernel_asset="arch-avf-kernel-${KERNEL_GIT_REF}.tar.gz"
+          current_kernel_pkg="arch-avf-linux-android-${kernel_pkgver}-1-aarch64.pkg.tar.zst"
+          current_firmware_pkg="arch-avf-linux-android-firmware-${kernel_pkgver}-1-aarch64.pkg.tar.zst"
+
+          gh release view "$KERNEL_RELEASE_TAG" --json assets --jq '.assets[].name' |
+            while IFS= read -r asset; do
+              case "$asset" in
+                "$current_kernel_asset"|"$current_kernel_pkg"|"$current_firmware_pkg")
+                  if [ "$REBUILD_KERNEL_ASSETS" = "true" ]; then
+                    gh release delete-asset "$KERNEL_RELEASE_TAG" "$asset" --yes
+                  fi
+                  ;;
+                SHA256SUMS.kernel)
+                  if [ "$REBUILD_KERNEL_ASSETS" = "true" ]; then
+                    gh release delete-asset "$KERNEL_RELEASE_TAG" "$asset" --yes
+                  fi
+                  ;;
+                arch-avf-kernel-*.tar.gz|arch-avf-linux-android-*.pkg.tar.zst)
+                  gh release delete-asset "$KERNEL_RELEASE_TAG" "$asset" --yes
+                  ;;
+              esac
+            done
+
       - name: Upload kernel build artifacts
         if: steps.assets.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4

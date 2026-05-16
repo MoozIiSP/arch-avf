@@ -27,6 +27,12 @@
     "console_input_device": "ttyS0",
     "network": true,
     "auto_memory_balloon": true,
+    "display": {
+        "width_pixels": 1280,
+        "height_pixels": 720,
+        "refresh_rate": 0,
+        "scale": 1.0
+    },
     "gpu": {
         "backend": "2d"
     },

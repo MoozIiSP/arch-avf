@@ -99,8 +99,19 @@ jobs:
           tar -C build/kernel -xzf "$kernel_archive"
           test -s build/kernel/vmlinuz
           test -s build/kernel/kernel.release
+          test -s build/kernel/kernel.source
           test -d build/kernel/modules/lib/modules
           compgen -G 'build/packages/*.pkg.tar.zst' >/dev/null
+          # Kernel releases are reused, so they can contain packages for older
+          # Android common tags. Keep only the pacman packages matching the
+          # kernel tarball selected above; pacman rejects multiple versions of
+          # the same package in a single transaction as duplicate targets.
+          # shellcheck disable=SC1091
+          source build/kernel/kernel.source
+          kernel_pkgver="$(printf '%s' "${KERNEL_VERSION}_${KERNEL_GIT_REF}" | sed 's/[^A-Za-z0-9_+.]/_/g')"
+          find build/packages -maxdepth 1 -type f -name '*.pkg.tar.zst' ! -name "*-${kernel_pkgver}-*.pkg.tar.zst" -delete
+          ls -lh build/packages/*.pkg.tar.zst
+          test "$(find build/packages -maxdepth 1 -type f -name '*.pkg.tar.zst' | wc -l)" -eq 2
 
       - name: Build rootfs
         run: make rootfs
