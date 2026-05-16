@@ -17,6 +17,7 @@ nss-mdns
 ttyd
 nftables
 mesa
+mesa-utils
 vulkan-icd-loader
 vulkan-swrast
 vulkan-gfxstream

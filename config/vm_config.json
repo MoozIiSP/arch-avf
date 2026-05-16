@@ -34,7 +34,7 @@
         "scale": 1.0
     },
     "gpu": {
-        "backend": "2d"
+        "backend": "virglrenderer"
     },
     "boot_timeout_secs": 120
 }
